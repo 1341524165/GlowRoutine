@@ -1,5 +1,11 @@
+const localData = require('../../utils/localData');
+const entitlementRules = require('../../utils/entitlementRules');
+const cloudEnhancements = require('../../utils/cloudEnhancements');
+const reportFallback = require('../../utils/reportFallback');
+
 Page({
   data: {
+
     inputMode: 'manual', // manual: 手动输入, smart: 智能识别/粘贴
     productName: '',
     pastedText: '',
@@ -88,31 +94,43 @@ Page({
       analysisResult: null
     });
 
-    // 触发避坑分析云函数（云端自动并行聚合最新肤质与已有护肤品柜）
-    wx.cloud.callFunction({
-      name: 'buyingConsultation',
-      data: {
+    const entitlement = localData.getEntitlementState();
+    const usage = localData.getUsageState();
+    const quota = entitlementRules.canUseCloudFeature('buying_consultation', entitlement, usage, new Date());
+
+    if (!quota.allowed) {
+      const fallbackResult = reportFallback.buildBuyingFallback(targetName, localData.getSkinProfile(), localData.getCabinetProducts());
+      this.setData({
+        isLoading: false,
+        analysisResult: fallbackResult,
         productName: targetName
-      }
+      });
+      wx.showModal({
+        title: '本月 AI 咨询额度已用完',
+        content: quota.prompt.message,
+        confirmText: '查看本地建议',
+        showCancel: false
+      });
+      return;
+    }
+
+    cloudEnhancements.callFunctionSafe('buyingConsultation', {
+      productName: targetName,
+      skinProfile: localData.getSkinProfile(),
+      cabinetSummary: localData.getCabinetProducts().map(item => item.product_name).join(', ')
     }).then(res => {
-      this.setData({ isLoading: false });
-      if (res.result && res.result.success) {
-        this.setData({
-          analysisResult: res.result.data,
-          // 确保把提取出来的商品名字更新，以便海报渲染
-          productName: targetName
-        });
-        wx.showToast({
-          title: '分析已完成',
-          icon: 'success'
-        });
+      const fallbackResult = reportFallback.buildBuyingFallback(targetName, localData.getSkinProfile(), localData.getCabinetProducts());
+      this.setData({
+        isLoading: false,
+        analysisResult: res.ok ? res.data : fallbackResult,
+        productName: targetName
+      });
+      if (res.ok) {
+        localData.saveUsageState(entitlementRules.incrementUsage(usage, 'buying_consultation', new Date()));
+        wx.showToast({ title: '分析已完成', icon: 'success' });
       } else {
-        wx.showToast({ title: '避坑分析出错，请重试', icon: 'none' });
+        wx.showToast({ title: '已生成本地建议', icon: 'none' });
       }
-    }).catch(err => {
-      console.error(err);
-      this.setData({ isLoading: false });
-      wx.showToast({ title: '连接云端超时，请稍后重试', icon: 'none' });
     });
   },
 
