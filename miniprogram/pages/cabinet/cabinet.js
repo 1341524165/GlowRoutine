@@ -1,3 +1,6 @@
+const localData = require('../../utils/localData');
+const entitlementRules = require('../../utils/entitlementRules');
+
 Page({
   data: {
     shelves: []
@@ -8,42 +11,31 @@ Page({
   },
 
   loadCabinetProducts() {
-    if (!wx.cloud) {
-      const localProducts = wx.getStorageSync('skincare_cabinet') || [];
-      this.processProducts(localProducts);
+    const localProducts = localData.getCabinetProducts();
+    this.processProducts(localProducts);
+
+    const entitlement = localData.getEntitlementState();
+    if (!entitlementRules.canSync(entitlement) || !wx.cloud) {
       return;
     }
-    wx.showLoading({ title: '加载中...' });
+
     try {
       const db = wx.cloud.database();
       db.collection('skincare_cabinet')
         .get()
         .then(res => {
-          wx.hideLoading();
-          if (res.data && res.data.length > 0) {
-            this.processProducts(res.data);
-          } else {
-            this.processProducts([]);
-          }
+          const merged = localData.mergeCabinetProducts(res.data || []);
+          this.processProducts(merged);
         })
         .catch(err => {
-          wx.hideLoading();
-          console.error('获取护肤柜失败，使用本地缓存:', err);
-          const localProducts = wx.getStorageSync('skincare_cabinet') || [];
-          this.processProducts(localProducts);
+          console.warn('获取云端护肤柜失败，继续使用本地数据:', err);
         });
     } catch (e) {
-      wx.hideLoading();
-      console.warn('云数据库获取失败，已切换至本地缓存:', e);
-      const localProducts = wx.getStorageSync('skincare_cabinet') || [];
-      this.processProducts(localProducts);
+      console.warn('云数据库获取失败，继续使用本地数据:', e);
     }
   },
 
   processProducts(products) {
-    // Sync to local storage for offline use
-    wx.setStorageSync('skincare_cabinet', products);
-
     const processed = products.map(prod => {
       const openedDateStr = prod.opened_date || new Date().toISOString().split('T')[0];
       let opened = new Date(openedDateStr);
@@ -132,9 +124,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           const deleteFromLocal = () => {
-            let products = wx.getStorageSync('skincare_cabinet') || [];
-            products = products.filter(p => p._id !== id);
-            wx.setStorageSync('skincare_cabinet', products);
+            localData.deleteCabinetProduct(id);
             wx.showToast({ title: '已删除', icon: 'success' });
             this.loadCabinetProducts();
           };
@@ -148,13 +138,8 @@ Page({
           try {
             const db = wx.cloud.database();
             db.collection('skincare_cabinet').doc(id).remove().then(() => {
-              let products = wx.getStorageSync('skincare_cabinet') || [];
-              products = products.filter(p => p._id !== id);
-              wx.setStorageSync('skincare_cabinet', products);
-              
               wx.hideLoading();
-              wx.showToast({ title: '已删除', icon: 'success' });
-              this.loadCabinetProducts();
+              deleteFromLocal();
             }).catch(err => {
               wx.hideLoading();
               console.warn('Cloud delete failed, falling back to local deletion:', err);

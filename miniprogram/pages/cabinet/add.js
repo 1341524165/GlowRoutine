@@ -1,3 +1,7 @@
+const localData = require('../../utils/localData');
+const entitlementRules = require('../../utils/entitlementRules');
+const cloudEnhancements = require('../../utils/cloudEnhancements');
+
 const formatTime = date => {
   const year = date.getFullYear()
   const month = date.getMonth() + 1
@@ -63,7 +67,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
     
     const loadFromLocal = () => {
-      const products = wx.getStorageSync('skincare_cabinet') || [];
+      const products = localData.getCabinetProducts();
       const product = products.find(p => p._id === id);
       if (product) {
         this.fillProductData(product);
@@ -152,72 +156,50 @@ Page({
         const tempFilePath = res.tempFiles[0].tempFilePath;
         wx.showLoading({ title: 'AI 识别配方中...' });
 
-        if (!wx.cloud) {
-          // Fallback to local simulated OCR analysis
-          setTimeout(() => {
-            wx.hideLoading();
-            this.fillOCRData({
-              product_name: '修丽可 CE 精华',
-              category: 'essence',
-              pao_months: 6,
-              ingredients: ['维C', '玻尿酸']
-            });
-            wx.showToast({ title: 'AI 识别填表成功！', icon: 'success' });
-          }, 1500);
+        const entitlement = localData.getEntitlementState();
+        const usage = localData.getUsageState();
+        const quota = entitlementRules.canUseCloudFeature('ai_ocr', entitlement, usage, new Date());
+
+        if (!quota.allowed) {
+          wx.hideLoading();
+          wx.showModal({
+            title: '本月 AI 识别额度已用完',
+            content: quota.prompt.message,
+            confirmText: '手动填写',
+            showCancel: false
+          });
           return;
         }
 
-        // Upload to cloud storage
         const cloudPath = `ocr/${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
-        wx.cloud.uploadFile({
-          cloudPath,
-          filePath: tempFilePath,
-          success: uploadRes => {
-            const fileID = uploadRes.fileID;
-            
-            // Call OCR cloud function
-            wx.cloud.callFunction({
-              name: 'skincareCabinetOCR',
-              data: { fileID }
-            }).then(ocrRes => {
-              wx.hideLoading();
-              if (ocrRes.result && ocrRes.result.success) {
-                this.fillOCRData(ocrRes.result.data);
-                wx.showToast({ title: 'AI 填表成功！', icon: 'success' });
-              } else {
-                wx.showToast({ title: '识别失败，已采用默认回填', icon: 'none' });
-                this.fillOCRData({
-                  product_name: '已上传待核对品名',
-                  category: 'essence',
-                  pao_months: 12,
-                  ingredients: ['玻尿酸']
-                });
-              }
-            }).catch(err => {
-              wx.hideLoading();
-              console.error(err);
-              wx.showToast({ title: '识别出错，已采用默认回填', icon: 'none' });
+        cloudEnhancements.uploadFileSafe(cloudPath, tempFilePath).then(upload => {
+          if (!upload.ok) {
+            wx.hideLoading();
+            wx.showToast({ title: '图片上传失败，已采用本地模拟识别', icon: 'none' });
+            this.fillOCRData({
+              product_name: '理肤泉 B5 修复面霜',
+              category: 'cream',
+              pao_months: 6,
+              ingredients: ['积雪草', 'B5']
+            });
+            return;
+          }
+          return cloudEnhancements.callFunctionSafe('skincareCabinetOCR', { fileID: upload.data }).then(ocrRes => {
+            wx.hideLoading();
+            if (ocrRes.ok) {
+              localData.saveUsageState(entitlementRules.incrementUsage(usage, 'ai_ocr', new Date()));
+              this.fillOCRData(ocrRes.data);
+              wx.showToast({ title: 'AI 填表成功！', icon: 'success' });
+            } else {
+              wx.showToast({ title: '识别失败，已采用默认回填', icon: 'none' });
               this.fillOCRData({
                 product_name: '已上传待核对品名',
                 category: 'essence',
                 pao_months: 12,
                 ingredients: ['玻尿酸']
               });
-            });
-          },
-          fail: err => {
-            wx.hideLoading();
-            console.error(err);
-            wx.showToast({ title: '图片上传失败，已采用本地模拟识别', icon: 'none' });
-            setTimeout(() => {
-              this.fillOCRData({
-                product_name: '理肤泉 B5 修复面霜',
-                category: 'cream',
-                pao_months: 6,
-                ingredients: ['积雪草', 'B5']
-              });
-            }, 1000);
-          }
+            }
+          });
         });
       }
     });
@@ -261,124 +243,49 @@ Page({
 
     wx.showLoading({ title: '保存中...' });
 
-    const handleLocalSave = () => {
-      let products = wx.getStorageSync('skincare_cabinet') || [];
-      if (this.data.isEdit) {
-        const index = products.findIndex(p => p._id === this.data.productId);
-        if (index > -1) {
-          products[index] = {
-            ...products[index],
-            product_name: productName,
-            category: category,
-            opened_date: openedDate,
-            pao_months: parseInt(paoMonths),
-            ingredients: selectedIngredients
-          };
-        }
-      } else {
-        const newProduct = {
-          _id: 'local_' + Date.now(),
-          product_name: productName,
-          category: category,
-          opened_date: openedDate,
-          pao_months: parseInt(paoMonths),
-          ingredients: selectedIngredients,
-          status: 'opened',
-          created_at: new Date().toISOString()
-        };
-        products.push(newProduct);
-      }
-      wx.setStorageSync('skincare_cabinet', products);
-      wx.hideLoading();
-      wx.showToast({ title: this.data.isEdit ? '修改成功(本地)' : '保存成功(本地)', icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 1000);
+    const productPayload = {
+      _id: this.data.isEdit ? this.data.productId : undefined,
+      product_name: productName,
+      category,
+      opened_date: openedDate,
+      pao_months: parseInt(paoMonths),
+      ingredients: selectedIngredients,
+      status: 'opened'
     };
 
-    if (!wx.cloud) {
-      // Offline fallback
-      setTimeout(handleLocalSave, 800);
-      return;
-    }
+    const saved = localData.upsertCabinetProduct(productPayload);
 
-    try {
-      const db = wx.cloud.database();
-      
-      if (this.data.isEdit) {
-        // Edit mode (Update)
-        db.collection('skincare_cabinet').doc(this.data.productId).update({
-          data: {
-            product_name: productName,
-            category: category,
-            opened_date: openedDate,
-            pao_months: parseInt(paoMonths),
-            ingredients: selectedIngredients
-          }
-        }).then(res => {
-          // Also update local storage for consistency
-          let products = wx.getStorageSync('skincare_cabinet') || [];
-          const index = products.findIndex(p => p._id === this.data.productId);
-          if (index > -1) {
-            products[index] = {
-              ...products[index],
-              product_name: productName,
-              category: category,
-              opened_date: openedDate,
-              pao_months: parseInt(paoMonths),
-              ingredients: selectedIngredients
-            };
-            wx.setStorageSync('skincare_cabinet', products);
-          }
-          
-          wx.hideLoading();
-          wx.showToast({ title: '修改成功！', icon: 'success' });
-          setTimeout(() => {
-            wx.navigateBack();
-          }, 1200);
-        }).catch(err => {
-          console.warn('Cloud update failed, syncing locally', err);
-          handleLocalSave();
-        });
-      } else {
-        // Add mode
-        db.collection('skincare_cabinet').add({
-          data: {
-            product_name: productName,
-            category: category,
-            opened_date: openedDate,
-            pao_months: parseInt(paoMonths),
-            ingredients: selectedIngredients,
-            status: 'opened',
-            created_at: new Date()
-          }
-        }).then(res => {
-          // Also sync locally on successful cloud addition
-          let products = wx.getStorageSync('skincare_cabinet') || [];
-          const newProduct = {
-            _id: res._id,
-            product_name: productName,
-            category: category,
-            opened_date: openedDate,
-            pao_months: parseInt(paoMonths),
-            ingredients: selectedIngredients,
-            status: 'opened',
-            created_at: new Date().toISOString()
-          };
-          products.push(newProduct);
-          wx.setStorageSync('skincare_cabinet', products);
+    wx.hideLoading();
+    wx.showToast({ title: this.data.isEdit ? '修改成功' : '录入成功', icon: 'success' });
 
-          wx.hideLoading();
-          wx.showToast({ title: '录入成功！', icon: 'success' });
-          setTimeout(() => {
-            wx.navigateBack();
-          }, 1200);
-        }).catch(err => {
-          console.warn('Cloud save failed, syncing locally', err);
-          handleLocalSave();
+    const cloudPayload = {
+      product_name: saved.product_name,
+      category: saved.category,
+      opened_date: saved.opened_date,
+      pao_months: saved.pao_months,
+      ingredients: saved.ingredients,
+      status: saved.status,
+      updated_at: new Date()
+    };
+
+    const syncPromise = this.data.isEdit && !saved._id.startsWith('local_')
+      ? cloudEnhancements.updateDocumentSafe('skincare_cabinet', saved._id, cloudPayload)
+      : cloudEnhancements.addDocumentSafe('skincare_cabinet', { ...cloudPayload, created_at: new Date() });
+
+    syncPromise.then(result => {
+      if (result.ok && result.data && result.data._id && saved._id.startsWith('local_')) {
+        localData.deleteCabinetProduct(saved._id);
+        localData.upsertCabinetProduct({
+          ...saved,
+          _id: result.data._id,
+          sync_status: 'synced',
+          synced_at: new Date().toISOString()
         });
+      } else if (!result.ok) {
+        console.warn('Cabinet cloud sync skipped:', result.error);
       }
-    } catch (e) {
-      console.warn('Cloud database submission failed synchronously, syncing locally', e);
-      handleLocalSave();
-    }
+    });
+
+    setTimeout(() => wx.navigateBack(), 1000);
   }
 });
