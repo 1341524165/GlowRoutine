@@ -1,3 +1,6 @@
+const localData = require('../../utils/localData');
+const cloudEnhancements = require('../../utils/cloudEnhancements');
+
 Page({
   data: {
     skinType: '',
@@ -12,9 +15,8 @@ Page({
   },
 
   onLoad() {
-    // If there is already a skin profile, load it to pre-fill
     try {
-      const profile = wx.getStorageSync('skin_profile');
+      const profile = localData.getSkinProfile();
       if (profile) {
         const goalsMap = {
           hydrate: false,
@@ -88,55 +90,31 @@ Page({
       is_period_sensitive: false
     };
 
-    // Save locally immediately as a fallback and for routing
-    try {
-      wx.setStorageSync('skin_profile', skinProfile);
-      wx.setStorageSync('has_skin_profile', true);
-    } catch (e) {
-      console.error('Failed to save profile to storage', e);
-    }
+    const savedProfile = localData.saveSkinProfile(skinProfile);
 
-    // Try cloud base database synchronization
-    if (wx.cloud) {
-      const db = wx.cloud.database();
-      db.collection('users').add({
-        data: {
-          skin_profile: skinProfile,
-          created_at: new Date()
-        }
-      }).then(res => {
-        console.log('Successfully synced skin profile to cloud db', res);
-        wx.hideLoading();
-        wx.showToast({
-          title: '方案定制成功！',
-          icon: 'success',
-          duration: 1200
-        });
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/index/index' });
-        }, 1200);
-      }).catch(err => {
-        console.error('Failed to sync to cloud database, proceeding with local fallback', err);
-        wx.hideLoading();
-        wx.showToast({
-          title: '方案已保存在本地',
-          icon: 'success',
-          duration: 1200
-        });
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/index/index' });
-        }, 1200);
-      });
-    } else {
-      wx.hideLoading();
-      wx.showToast({
-        title: '方案已保存在本地',
-        icon: 'success',
-        duration: 1200
-      });
-      setTimeout(() => {
-        wx.switchTab({ url: '/pages/index/index' });
-      }, 1200);
-    }
+    wx.hideLoading();
+    wx.showToast({
+      title: '方案已保存在本地',
+      icon: 'success',
+      duration: 1200
+    });
+
+    cloudEnhancements.addDocumentSafe('users', {
+      skin_profile: {
+        ...savedProfile,
+        sync_status: 'synced',
+        synced_at: new Date().toISOString()
+      },
+      created_at: new Date()
+    }).then(result => {
+      if (!result.ok) {
+        console.warn('Skin profile cloud sync skipped:', result.error);
+      }
+    });
+
+    setTimeout(() => {
+      wx.switchTab({ url: '/pages/index/index' });
+    }, 1200);
   }
 });
+

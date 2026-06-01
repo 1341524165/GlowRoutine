@@ -1,4 +1,6 @@
 const { generateSteps } = require('../../utils/routineEngine');
+const localData = require('../../utils/localData');
+const entitlementRules = require('../../utils/entitlementRules');
 
 Page({
   data: {
@@ -18,16 +20,14 @@ Page({
   },
 
   onShow() {
-    // 1. Verify if user skin profile exists
-    const hasProfile = wx.getStorageSync('has_skin_profile');
-    if (!hasProfile) {
+    const profile = localData.getSkinProfile();
+    if (!profile) {
       wx.navigateTo({
         url: '/pages/questionnaire/questionnaire'
       });
       return;
     }
 
-    // 2. Load profile and routine matching
     this.loadProfileAndRoutine();
   },
 
@@ -54,103 +54,43 @@ Page({
   },
 
   loadProfileAndRoutine() {
-    // Obtain cached skin profile first as robust fallback
-    let profile = null;
-    try {
-      profile = wx.getStorageSync('skin_profile');
-    } catch (e) {
-      console.error('Failed to get cached skin profile', e);
-    }
+    const profile = localData.getSkinProfile();
+    const cabinetList = localData.getCabinetProducts().filter(item => item.status === 'opened');
 
-    // Translate skin types & sensitivities to Chinese display names
-    const updateDisplayNames = (p) => {
-      if (!p) return;
-      
-      const typeMap = {
-        oily: '偏油肌',
-        dry: '偏干肌',
-        combination: '混合肌',
-        unknown: '未知肤质'
-      };
-      
-      const sensMap = {
-        severe: '易刺痛敏肌',
-        moderate: '偶尔泛红肌',
-        stable: '强韧耐受肌'
-      };
-
-      this.setData({
-        skinProfile: p,
-        skinTypeChinese: typeMap[p.skin_type] || '定制肤质',
-        sensitivityChinese: sensMap[p.sensitivity] || ''
-      });
+    const typeMap = {
+      oily: '偏油肌',
+      dry: '偏干肌',
+      combination: '混合肌',
+      unknown: '未知肤质'
     };
 
-    if (profile) {
-      updateDisplayNames(profile);
-    }
-
-    // Prepare robust loading of cabinet products
-    const loadFromCabinet = (finalProfile) => {
-      let cabinetList = [];
-      let cloudLoadedCabinet = false;
-      
-      // Attempt cloud load first
-      if (wx.cloud) {
-        try {
-          const db = wx.cloud.database();
-          db.collection('skincare_cabinet').where({
-            status: 'opened'
-          }).get().then(cabRes => {
-            cabinetList = cabRes.data;
-            this.generateAndMapSteps(finalProfile, cabinetList);
-          }).catch(err => {
-            console.warn('Failed to load cabinet from cloud db, falling back to local cache', err);
-            cabinetList = wx.getStorageSync('skincare_cabinet') || [];
-            const openedCabinetList = cabinetList.filter(item => item.status === 'opened');
-            this.generateAndMapSteps(finalProfile, openedCabinetList);
-          });
-          cloudLoadedCabinet = true;
-        } catch (e) {
-          console.warn('Cloud database init failed for cabinet, using local cache', e);
-        }
-      }
-      
-      if (!cloudLoadedCabinet) {
-        cabinetList = wx.getStorageSync('skincare_cabinet') || [];
-        const openedCabinetList = cabinetList.filter(item => item.status === 'opened');
-        this.generateAndMapSteps(finalProfile, openedCabinetList);
-      }
+    const sensMap = {
+      severe: '易刺痛敏肌',
+      moderate: '偶尔泛红肌',
+      stable: '强韧耐受肌'
     };
 
-    // Try cloud loading of skin profile
-    let cloudLoadedProfile = false;
-    if (wx.cloud) {
+    this.setData({
+      skinProfile: profile,
+      skinTypeChinese: typeMap[profile.skin_type] || '定制肤质',
+      sensitivityChinese: sensMap[profile.sensitivity] || ''
+    });
+
+    this.generateAndMapSteps(profile, cabinetList);
+
+    const entitlement = localData.getEntitlementState();
+    if (entitlementRules.canSync(entitlement) && wx.cloud) {
       try {
         const db = wx.cloud.database();
-        db.collection('users').orderBy('created_at', 'desc').limit(1).get().then(res => {
-          if (res.data && res.data.length > 0 && res.data[0].skin_profile) {
-            const cloudProfile = res.data[0].skin_profile;
-            // Sync back to local storage just in case
-            wx.setStorageSync('skin_profile', cloudProfile);
-            updateDisplayNames(cloudProfile);
-            loadFromCabinet(cloudProfile);
-          } else {
-            // Cloud empty, use local
-            loadFromCabinet(profile);
-          }
+        db.collection('skincare_cabinet').where({ status: 'opened' }).get().then(res => {
+          localData.mergeCabinetProducts(res.data || []);
+          this.generateAndMapSteps(profile, localData.getCabinetProducts().filter(item => item.status === 'opened'));
         }).catch(err => {
-          console.warn('Failed to fetch profile from cloud database, using cached', err);
-          loadFromCabinet(profile);
+          console.warn('Cloud cabinet merge skipped:', err);
         });
-        cloudLoadedProfile = true;
       } catch (e) {
-        console.warn('Cloud database init failed for skin profile, using cached', e);
+        console.warn('Cloud cabinet merge unavailable:', e);
       }
-    }
-    
-    if (!cloudLoadedProfile) {
-      loadFromCabinet(profile);
     }
   },
 
@@ -255,52 +195,34 @@ Page({
       created_at: new Date()
     };
 
-    // Save locally first
-    try {
-      const logs = wx.getStorageSync('skin_diary_logs') || [];
-      logs.unshift(checkInData);
-      wx.setStorageSync('skin_diary_logs', logs);
-    } catch (e) {
-      console.error('Failed to save check-in data locally', e);
-    }
+    const saved = localData.addSkinDiary(checkInData);
 
-    // Try cloud database saving
+    wx.hideLoading();
+    wx.showToast({
+      title: '本地打卡成功',
+      icon: 'success',
+      duration: 1500
+    });
+    setTimeout(() => {
+      wx.switchTab({ url: '/pages/diary/diary' });
+    }, 1500);
+
+    // Asynchronously try cloud database saving
     if (wx.cloud) {
       const db = wx.cloud.database();
       db.collection('skin_diary').add({
-        data: checkInData
+        data: saved
       }).then(res => {
-        wx.hideLoading();
-        wx.showToast({
-          title: '打卡成功！',
-          icon: 'success',
-          duration: 1500
-        });
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/diary/diary' });
-        }, 1500);
+        if (res && res._id) {
+          localData.updateSkinDiary(saved._id, {
+            cloud_id: res._id,
+            sync_status: 'synced',
+            synced_at: new Date().toISOString()
+          });
+        }
       }).catch(err => {
-        console.warn('Failed to upload check-in data, saved locally', err);
-        wx.hideLoading();
-        wx.showToast({
-          title: '本地打卡成功',
-          icon: 'success',
-          duration: 1500
-        });
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/diary/diary' });
-        }, 1500);
+        console.warn('Failed to upload check-in data to cloud', err);
       });
-    } else {
-      wx.hideLoading();
-      wx.showToast({
-        title: '本地打卡成功',
-        icon: 'success',
-        duration: 1500
-      });
-      setTimeout(() => {
-        wx.switchTab({ url: '/pages/diary/diary' });
-      }, 1500);
     }
   }
 });
