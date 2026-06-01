@@ -1,0 +1,176 @@
+<view class="diary-container">
+  <view class="header animate-fade-in">
+    <text class="title">皮肤日记 & 屏障对比</text>
+    <text class="subtitle">记录每一天的微小蜕变，见证肌肤屏障的新生</text>
+  </view>
+  
+  <!-- 极简打卡卡片 -->
+  <view class="checkin-card glass-card animate-slide-up">
+    <view class="card-header">
+      <text class="section-title">✍️ 今日肤况打卡</text>
+      <text class="card-tip">只需 30 秒，记录核心指标</text>
+    </view>
+    
+    <view class="input-row">
+      <view class="slider-label-row">
+        <text class="label">今日油腻感</text>
+        <text class="slider-value">{{oiliness}} 星</text>
+      </view>
+      <slider min="1" max="5" value="{{oiliness}}" show-value="{{false}}" bindchange="onOilChange" activeColor="#E8A08A" backgroundColor="#EFEFEF" block-color="#E8A08A" block-size="20"/>
+      <view class="slider-hint"><text>极干爽</text><text>极油腻</text></view>
+    </view>
+
+    <view class="input-row">
+      <text class="label">今日皮肤状态排查 (多选)</text>
+      <checkbox-group bindchange="onStatusChange" class="badge-group">
+        <label class="badge-item {{item.checked ? 'active' : ''}}" wx:for="{{statusOptions}}" wx:key="value">
+          <checkbox value="{{item.value}}" checked="{{item.checked}}" hidden/>
+          <text>{{item.name}}</text>
+        </label>
+      </checkbox-group>
+    </view>
+    
+    <view class="input-row">
+      <text class="label">生活诱因排查 (多选)</text>
+      <checkbox-group bindchange="onTriggersChange" class="badge-group">
+        <label class="badge-item {{item.checked ? 'active' : ''}}" wx:for="{{triggerOptions}}" wx:key="value">
+          <checkbox value="{{item.value}}" checked="{{item.checked}}" hidden/>
+          <text>{{item.name}}</text>
+        </label>
+      </checkbox-group>
+    </view>
+
+    <!-- 照片上传区域 -->
+    <view class="input-row">
+      <text class="label">📸 肤况拍照记录 (双图对比素材)</text>
+      <view class="photo-upload-area" bindtap="onChooseImage">
+        <block wx:if="{{photoPath}}">
+          <image class="preview-img" src="{{photoPath}}" mode="aspectFill"/>
+          <view class="upload-overlay">
+            <text class="overlay-text">重新上传</text>
+          </view>
+        </block>
+        <block wx:else>
+          <view class="upload-placeholder">
+            <text class="upload-icon">＋</text>
+            <text class="upload-text">拍摄/选择今天素颜照</text>
+            <text class="upload-sub">照片将加密存于微信云托管，仅自己可见</text>
+          </view>
+        </block>
+      </view>
+    </view>
+    
+    <button class="save-diary-btn" hover-class="btn-hover" bindtap="saveDiary">保存今日日记</button>
+  </view>
+
+  <!-- Canvas 双图滑动对比 -->
+  <view class="comparison-card glass-card animate-slide-up" style="animation-delay: 0.1s;">
+    <view class="card-header">
+      <text class="section-title">⚖️ 皮肤屏障对比 (Before/After)</text>
+      <text class="card-tip">拖动下方滑块，直观见证皮肤改善</text>
+    </view>
+    
+    <view class="canvas-container">
+      <canvas type="2d" id="compareCanvas" class="compare-canvas" bindtouchmove="onCanvasTouch" bindtouchstart="onCanvasTouchStart"></canvas>
+      <text class="slider-tip">👈 左右拖动圆形滑块查看对比 👉</text>
+    </view>
+  </view>
+
+  <!-- AI 皮肤趋势周报卡片 -->
+  <view class="weekly-report-card glass-card animate-slide-up" style="animation-delay: 0.2s;">
+    <view class="card-header">
+      <text class="section-title">🔮 AI 皮肤趋势周报</text>
+      <text class="card-tip">深度剖析近期生活习惯与护肤活性成分冲突</text>
+    </view>
+
+    <!-- 未解锁状态：打卡次数不足 5 次 -->
+    <block wx:if="{{checkInCount < 5}}">
+      <view class="lock-container">
+        <icon class="lock-icon" type="info" size="36" color="#C6A49A"/>
+        <text class="lock-title">AI 闺蜜周报正被封印中...</text>
+        <text class="lock-desc">需要本周累计打卡满 5 次以激活报告。坚持记录，让 AI 更好地读懂你的皮肤！</text>
+        
+        <view class="progress-section">
+          <view class="progress-text-row">
+            <text>当前打卡进度</text>
+            <text class="progress-val">{{checkInCount}} / 5 次</text>
+          </view>
+          <view class="progress-bg">
+            <view class="progress-bar" style="width: {{checkInCount * 20}}%"></view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- 待解锁状态：打卡已满 5 次，但尚未看广告或订阅解锁 -->
+    <block wx:elif="{{checkInCount >= 5 && !isReportUnlocked}}">
+      <view class="unlock-prompt-container">
+        <text class="congrats-title">🎉 恭喜！本周打卡已达标！</text>
+        <text class="lock-desc">您的 AI 闺蜜已经连夜为您写好了本周护肤周度大盘点。立刻解锁听她的大白话唠叨吧！</text>
+        
+        <view class="unlock-btn-group">
+          <button class="ad-unlock-btn" hover-class="btn-hover" bindtap="watchAdToUnlock">
+            <text>📺 看15s趣味广告解锁报告</text>
+          </button>
+          <button class="vip-unlock-btn" hover-class="btn-hover" bindtap="directVipUnlock">
+            <text>👑 订阅会员免广告直接解锁</text>
+          </button>
+        </view>
+      </view>
+    </block>
+
+    <!-- 已解锁状态：渲染 AI 分析报告 -->
+    <block wx:else>
+      <view class="report-content-container animate-fade-in">
+        <view class="report-header">
+          <view class="report-tag">AI闺蜜诊断书</view>
+          <text class="report-date">分析时间: {{reportTime}}</text>
+        </view>
+
+        <view class="report-section pink">
+          <view class="section-badge">🗣️ 闺蜜整体综述</view>
+          <text class="report-text bold-summary">{{weeklyReport.overall_summary}}</text>
+        </view>
+
+        <view class="report-section yellow">
+          <view class="section-badge">💡 生活诱因痛点剖析</view>
+          <text class="report-text">{{weeklyReport.trigger_analysis}}</text>
+        </view>
+
+        <view class="report-section blue">
+          <view class="section-badge">🎒 护肤柜成分与避坑警告</view>
+          <text class="report-text">{{weeklyReport.cabinet_matching}}</text>
+        </view>
+
+        <view class="report-section green">
+          <view class="section-badge">📋 下周极简实操调优案</view>
+          <text class="report-text plan-text">{{weeklyReport.action_plan}}</text>
+        </view>
+
+        <view class="report-section heart">
+          <view class="section-badge">💖 闺蜜悄悄话</view>
+          <text class="report-text quote-text">“{{weeklyReport.sweet_tip}}”</text>
+        </view>
+        
+        <button class="re-analyze-btn" hover-class="btn-hover" bindtap="triggerAnalysis">重新深度分析</button>
+      </view>
+    </block>
+  </view>
+</view>
+
+<!-- 模拟广告弹窗 -->
+<view class="ad-modal" wx:if="{{showAdModal}}">
+  <view class="ad-content glass-card animate-zoom-in">
+    <view class="ad-header">
+      <text class="ad-title">🎬 赞助商激励视频广告</text>
+      <view class="ad-timer">倒计时: {{adCountdown}}s</view>
+    </view>
+    <view class="ad-body">
+      <image class="ad-mock-img" src="https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=400" mode="aspectFill"/>
+      <text class="ad-mock-text">广告商爸爸倾情推荐：Glow Routine 物理敏感修护防晒，给肌肤最轻盈的隐形防雨伞！</text>
+    </view>
+    <button class="ad-skip-btn" disabled="{{adCountdown > 0}}" bindtap="onAdComplete">
+      {{adCountdown > 0 ? '看完广告可解锁报告' : '跳过并解锁报告 🎉'}}
+    </button>
+  </view>
+</view>

@@ -1,0 +1,9 @@
+{
+  "name": "buyingConsultation",
+  "version": "1.0.0",
+  "description": "Analyze proposed skincare purchase with AI and return detailed review",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

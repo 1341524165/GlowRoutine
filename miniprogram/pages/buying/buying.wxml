@@ -1,0 +1,141 @@
+<view class="container">
+  <!-- 免责声明组件 -->
+  <disclaimer id="disclaimer-modal" />
+
+  <!-- 顶部精美标题 -->
+  <view class="header-section">
+    <text class="page-title">AI 闺蜜拔草冷静期</text>
+    <text class="page-subtitle">理智避坑 · 拒绝情绪性消费 · 守护发光肌</text>
+  </view>
+
+  <!-- 输入面板卡片 -->
+  <view class="input-card glass-card">
+    <view class="section-title">
+      <text class="title-icon">🔍</text>
+      <text>买前问问 AI 闺蜜</text>
+    </view>
+
+    <!-- Tab 切换切换录入模式 -->
+    <view class="input-tabs">
+      <view class="tab-item {{inputMode === 'manual' ? 'active' : ''}}" bindtap="switchInputMode" data-mode="manual">✍️ 手动录入</view>
+      <view class="tab-item {{inputMode === 'smart' ? 'active' : ''}}" bindtap="switchInputMode" data-mode="smart">📸 智能识别/粘贴</view>
+    </view>
+
+    <!-- 手动输入模式 -->
+    <view class="manual-form" wx:if="{{inputMode === 'manual'}}">
+      <view class="form-item">
+        <text class="form-label">打算购买的单品名称：</text>
+        <input class="p-input" value="{{productName}}" placeholder="如：修丽可A醇、神仙水..." bindinput="onInputName"/>
+      </view>
+    </view>
+
+    <!-- 智能识别/粘贴模式 -->
+    <view class="smart-form" wx:else>
+      <view class="form-item">
+        <text class="form-label">上传种草图/详情图/配方表：</text>
+        <view class="image-uploader" bindtap="uploadImage">
+          <block wx:if="{{uploadedImage}}">
+            <image src="{{uploadedImage}}" mode="aspectFill" class="preview-img"></image>
+            <view class="upload-mask" catchtap="removeImage">✕ 重新上传</view>
+          </block>
+          <block wx:else>
+            <view class="upload-placeholder">
+              <text class="upload-icon">📸</text>
+              <text class="upload-text">点击上传小红书截图或详情图</text>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">或粘贴商品详情/博主文案：</text>
+        <textarea class="p-textarea" value="{{pastedText}}" placeholder="把小红书种草文案或者商品详情粘贴到这里，AI 会自动提炼成分..." bindinput="onInputText" maxlength="1000"></textarea>
+      </view>
+    </view>
+
+    <!-- 开始分析按钮 -->
+    <button class="analyze-btn" hover-class="btn-hover" bindtap="startAnalysis">开始冷静避坑分析 🧪</button>
+  </view>
+
+  <!-- 莫兰迪高亮加载动效 -->
+  <view class="loading-overlay" wx:if="{{isLoading}}">
+    <view class="loading-content glass-card">
+      <view class="morandi-spinner">
+        <view class="spinner-dot dot1"></view>
+        <view class="spinner-dot dot2"></view>
+        <view class="spinner-dot dot3"></view>
+      </view>
+      <text class="loading-text">AI 闺蜜正在努力看配方表\n并计算你的账单...</text>
+    </view>
+  </view>
+
+  <!-- 冷静分析书结果 (Calm-down Certificate Card) -->
+  <view class="result-card glass-card" wx:if="{{analysisResult}}">
+    <!-- 证书顶部盖章与信号灯 -->
+    <view class="certificate-header">
+      <view class="cert-stamp">冷静避坑证书</view>
+      <view class="indicator-group">
+        <view class="indicator-light {{analysisResult.suitability_score >= 7 ? 'green' : 'red'}}"></view>
+        <text class="indicator-text">{{analysisResult.suitability_score >= 7 ? '推荐拔草' : '避坑警报'}}</text>
+      </view>
+    </view>
+
+    <!-- 冷静指数大分数展示 -->
+    <view class="score-showcase">
+      <view class="score-ring {{analysisResult.suitability_score >= 7 ? 'high' : 'low'}}">
+        <text class="score-num">{{analysisResult.suitability_score}}</text>
+        <text class="score-unit">分</text>
+      </view>
+      <view class="score-desc">
+        <text class="score-title">今日冷静指数</text>
+        <text class="score-sub">{{analysisResult.suitability_score >= 7 ? '成分适配度高，可以理性种草' : '营销水分过高或成分冲突，强烈建议拔草！'}}</text>
+      </view>
+    </view>
+
+    <!-- 详细分析项 -->
+    <view class="detail-section">
+      <!-- 营销脱水 Check -->
+      <view class="detail-item">
+        <view class="detail-title">
+          <text class="icon-circle water">💡</text>
+          <text>营销脱水 Check</text>
+        </view>
+        <view class="detail-content">{{analysisResult.hype_check}}</view>
+      </view>
+
+      <!-- 猛药冲突排查 -->
+      <view class="detail-item">
+        <view class="detail-title">
+          <text class="icon-circle danger">⚠️</text>
+          <text>猛药冲突排查</text>
+        </view>
+        <view class="detail-content warning-text">{{analysisResult.conflict_warnings}}</view>
+      </view>
+
+      <!-- 重复囤货警告 -->
+      <view class="detail-item">
+        <view class="detail-title">
+          <text class="icon-circle overlap">🎒</text>
+          <text>功能重复/囤货警告</text>
+        </view>
+        <view class="detail-content">{{analysisResult.cabinet_overlap}}</view>
+      </view>
+
+      <!-- 闺蜜毒舌判决 -->
+      <view class="verdict-box">
+        <view class="detail-title">
+          <text class="icon-circle judge">🗣️</text>
+          <text>毒舌闺蜜判决</text>
+        </view>
+        <view class="verdict-text">{{analysisResult.verdict}}</view>
+      </view>
+    </view>
+
+    <!-- 保存分享海报按钮 -->
+    <button class="share-card-btn" hover-class="btn-hover" bindtap="generateSharePoster">保存拔草证书存入相册 📸</button>
+    <text class="share-tip">保存精致海报，快去小红书吐槽或打卡吧！</text>
+  </view>
+
+  <!-- 隐藏的海报Canvas (用于渲染 9:16 海报并保存) -->
+  <canvas type="2d" id="shareCanvas" class="hidden-canvas"></canvas>
+</view>

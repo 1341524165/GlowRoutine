@@ -1,0 +1,76 @@
+<view class="add-container">
+  <view class="header">
+    <text class="title">{{isEdit ? '修改护肤单品' : '录入护肤单品'}}</text>
+    <text class="subtitle">{{isEdit ? '修改当前单品的属性和状态' : '手动填写或使用 AI 拍照自动录入'}}</text>
+  </view>
+
+  <!-- AI 拍照快速解析卡片 -->
+  <view class="ocr-card glass-card">
+    <view class="ocr-header">
+      <text class="ocr-title">✨ AI 智能录入通道</text>
+      <text class="ocr-desc">拍照上传瓶身配方或包装，AI 自动提取产品名、成分与保质期</text>
+    </view>
+    <button class="ocr-btn" bindtap="onOCRUpload">
+      <text class="btn-icon">📸</text>
+      <text>拍照/相册自动解析</text>
+    </button>
+  </view>
+
+  <!-- 表单卡片 -->
+  <view class="form-card glass-card">
+    <form bindsubmit="onSubmit">
+      <!-- 单品名称 -->
+      <view class="form-item">
+        <text class="label">产品名称</text>
+        <input class="name-input" name="productName" value="{{productName}}" placeholder="请输入产品品牌及全称..." placeholder-class="placeholder-style" />
+      </view>
+
+      <!-- 品类分类 (单选) -->
+      <view class="form-item">
+        <text class="label">品类分类 <text class="required">*</text></text>
+        <view class="capsule-group">
+          <view class="capsule-tag {{selectedCategory === item.key ? 'active' : ''}}" 
+                wx:for="{{categories}}" wx:key="key" 
+                bindtap="onSelectCategory" data-key="{{item.key}}">
+            {{item.name}}
+          </view>
+        </view>
+      </view>
+
+      <!-- 核心活性成分 (多选) -->
+      <view class="form-item">
+        <text class="label">核心活性成分/特性 (可多选)</text>
+        <view class="capsule-group">
+          <view class="capsule-tag {{item.selected ? 'active' : ''}}" 
+                wx:for="{{ingredients}}" wx:key="name" 
+                bindtap="onToggleIngredient" data-index="{{index}}">
+            {{item.name}}
+          </view>
+        </view>
+      </view>
+
+      <!-- 开封日期 -->
+      <view class="form-item">
+        <text class="label">开封日期</text>
+        <picker mode="date" value="{{openedDate}}" end="{{today}}" bindchange="onDateChange">
+          <view class="picker-val">
+            <text>{{openedDate}}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+
+      <!-- PAO 保质期 -->
+      <view class="form-item">
+        <view class="label-row">
+          <text class="label">开封后保质期 (PAO)</text>
+          <text class="pao-value-text">{{paoMonths}} 个月</text>
+        </view>
+        <slider min="1" max="36" value="{{paoMonths}}" show-value="{{false}}" bindchange="onPaoChange" activeColor="#E8A08A" block-color="#E8A08A" />
+        <view class="pao-tips">指开封后的使用期限（通常印有像开盖小罐的 6M/12M 标志）</view>
+      </view>
+
+      <button form-type="submit" class="submit-btn">{{isEdit ? '保存修改' : '保存至护肤柜'}}</button>
+    </form>
+  </view>
+</view>

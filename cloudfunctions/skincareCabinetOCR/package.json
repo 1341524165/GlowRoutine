@@ -1,0 +1,9 @@
+{
+  "name": "skincareCabinetOCR",
+  "version": "1.0.0",
+  "description": "Extract product info, ingredients and PAO from packaging photos",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

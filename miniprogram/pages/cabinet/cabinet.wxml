@@ -1,0 +1,55 @@
+<view class="cabinet-container">
+  <!-- 头部大按钮与标题 -->
+  <view class="cabinet-header">
+    <view class="header-left">
+      <text class="cabinet-title">我的护肤品柜</text>
+      <text class="cabinet-subtitle">分类架与开封保质期管理</text>
+    </view>
+    <button class="add-btn" bindtap="onAddProduct">＋ 录入单品</button>
+  </view>
+
+  <!-- 空白状态 -->
+  <view class="empty-state" wx:if="{{shelves.length === 0}}">
+    <view class="empty-icon-wrap">🧪</view>
+    <text class="empty-text">你的护肤柜还是空的哦</text>
+    <button class="empty-btn" bindtap="onAddProduct">立即录入第一款单品</button>
+  </view>
+
+  <!-- 分类架滚动区 -->
+  <scroll-view class="shelf-scroll" scroll-y wx:else>
+    <block wx:for="{{shelves}}" wx:key="key" wx:for-item="shelf">
+      <view class="shelf-section">
+        <view class="shelf-title-bar">
+          <view class="shelf-title">
+            <text class="shelf-icon">{{shelf.icon}}</text>
+            <text class="shelf-name">{{shelf.title}}</text>
+            <text class="shelf-count">({{shelf.products.length}})</text>
+          </view>
+        </view>
+        
+        <view class="product-grid">
+          <view class="product-card glass-card" wx:for="{{shelf.products}}" wx:key="_id" bindlongpress="onDeleteProduct" data-id="{{item._id}}" data-name="{{item.product_name}}">
+            <view class="product-info">
+              <text class="p-name">{{item.product_name}}</text>
+              <view class="tag-row" wx:if="{{item.ingredients && item.ingredients.length > 0}}">
+                <text class="ingredient-tag" wx:for="{{item.ingredients}}" wx:key="*this" wx:for-item="ing">{{ing}}</text>
+              </view>
+            </view>
+            <view class="pao-container">
+              <view class="pao-meta">
+                <text class="pao-text">剩 {{item.remainingText}}</text>
+                <text class="pao-pao">{{item.pao_months}}M</text>
+              </view>
+              <view class="pao-progress-bg">
+                <view class="pao-progress-bar {{item.remainingStyle}}" style="width: {{item.remainingPercent}}%"></view>
+              </view>
+            </view>
+            <!-- 悬浮编辑与删除小按钮 -->
+            <view class="edit-btn" catchtap="onEditProduct" data-id="{{item._id}}">✏️</view>
+            <view class="delete-btn" catchtap="onDeleteProduct" data-id="{{item._id}}" data-name="{{item.product_name}}">×</view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </scroll-view>
+</view>

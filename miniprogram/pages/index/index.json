@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "今日护肤日程",
+  "usingComponents": {
+    "disclaimer": "/components/disclaimer/disclaimer"
+  }
+}

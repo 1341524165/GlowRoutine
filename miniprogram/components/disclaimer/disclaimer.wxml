@@ -1,0 +1,11 @@
+<view class="modal-mask" wx:if="{{visible}}">
+  <view class="modal-content glass-card">
+    <view class="modal-title">护肤安全声明</view>
+    <scroll-view scroll-y class="modal-body">
+      <text class="bold-text">Glow Routine 仅作为日常皮肤保养习惯与产品管理建议，不提供任何医学诊断与治疗方案。</text>
+      <text>\n\n1. 如果您的皮肤出现严重红肿、持续刺痛、大面积脱皮或病理性爆痘，请务必前往三甲医院皮肤科进行专业诊疗。\n2. 本小程序提供的活性成分避坑及搭配逻辑基于常用护肤常识，不代表 100% 豁免个体过敏反应，使用高浓度猛药前建议在耳后进行过敏测试。</text>
+    </scroll-view>
+    <button class="agree-btn" bindtap="onAgree">我已阅读并同意</button>
+  </view>
+</view>
+<!-- Trigger component compiler rebuild -->

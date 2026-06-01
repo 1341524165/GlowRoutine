@@ -1,0 +1,90 @@
+<disclaimer id="disclaimer-modal" bind:agreed="onDisclaimerAgreed" />
+
+<view class="container">
+  <!-- 头部欢迎区 -->
+  <view class="header-section animate-fade-in">
+    <view class="header-left">
+      <text class="date-text">{{todayDate}}</text>
+      <text class="greeting-text">嗨，你的今日护肤方案</text>
+    </view>
+    <view class="skin-profile-badge" bindtap="goToQuestionnaire">
+      <text class="profile-type">{{skinTypeChinese}}</text>
+      <text class="profile-sensitivity">{{sensitivityChinese}}</text>
+    </view>
+  </view>
+
+  <!-- 实时肤况与警报调节卡片 -->
+  <view class="alert-control-card glass-card animate-slide-up">
+    <view class="alert-card-header">
+      <text class="alert-title">🚨 实时肤况异常（泛红警报）</text>
+      <switch checked="{{isRedAlert}}" color="var(--theme-warning)" bindchange="onRedAlertToggle" />
+    </view>
+    <view class="alert-msg-box {{isRedAlert ? 'danger' : 'safe'}}">
+      <text class="alert-msg-text">{{alertMessage}}</text>
+    </view>
+  </view>
+
+  <!-- 早晚日程选项卡 -->
+  <view class="tab-header animate-slide-up" style="animation-delay: 0.05s;">
+    <view class="tab-btn {{activeTab === 'morning' ? 'active' : ''}}" bindtap="switchTab" data-tab="morning">
+      <text class="tab-icon">☀️</text>
+      <text class="tab-label">晨间日程</text>
+    </view>
+    <view class="tab-btn {{activeTab === 'evening' ? 'active' : ''}}" bindtap="switchTab" data-tab="evening">
+      <text class="tab-icon">🌙</text>
+      <text class="tab-label">夜间日程</text>
+    </view>
+  </view>
+
+  <!-- 日程步骤列表 -->
+  <scroll-view class="steps-scroll animate-slide-up" style="animation-delay: 0.1s;" scroll-y>
+    <view class="steps-container">
+      <block wx:if="{{currentSteps && currentSteps.length > 0}}">
+        <view class="step-card glass-card {{item.completed ? 'completed' : ''}}" 
+              wx:for="{{currentSteps}}" 
+              wx:key="index"
+              bindtap="toggleStepCompletion"
+              data-index="{{index}}">
+          
+          <view class="checkbox-container">
+            <view class="custom-checkbox {{item.completed ? 'checked' : ''}}"></view>
+          </view>
+
+          <view class="step-content">
+            <view class="step-badge-row">
+              <text class="step-badge">步骤 {{index + 1}}</text>
+              <text class="step-name">{{item.step}}</text>
+            </view>
+            <text class="step-requirement">{{item.requirement}}</text>
+            <text class="step-desc">{{item.desc}}</text>
+
+            <!-- 绑定柜子已开封单品 -->
+            <block wx:if="{{item.mappedProduct}}">
+              <view class="product-badge animate-fade-in">
+                <text class="badge-icon">🎒</text>
+                <text class="product-info">已适配柜内：{{item.mappedProduct.product_name}}</text>
+              </view>
+            </block>
+            <block wx:else>
+              <view class="product-badge empty animate-fade-in" catchtap="goToCabinet">
+                <text class="badge-icon">💡</text>
+                <text class="product-info">柜子暂无此产品，去录入 ➔</text>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="empty-state">
+          <text class="empty-text">方案加载中，请稍候...</text>
+        </view>
+      </block>
+    </view>
+  </scroll-view>
+
+  <!-- 底部悬浮打卡区 -->
+  <view class="footer-action animate-slide-up" style="animation-delay: 0.15s;">
+    <button class="checkin-btn" bindtap="onCheckIn">完成今日护肤并打卡</button>
+  </view>
+</view>
+<!-- Trigger compiler rebuild -->

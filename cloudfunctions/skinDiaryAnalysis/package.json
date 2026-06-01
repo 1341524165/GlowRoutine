@@ -1,0 +1,9 @@
+{
+  "name": "skinDiaryAnalysis",
+  "version": "1.0.0",
+  "description": "Analyze user skin diary and skincare cabinet using LLM",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

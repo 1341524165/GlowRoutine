@@ -1,0 +1,214 @@
+.container {
+  padding: 24px 20px 48px;
+  background-color: var(--theme-bg);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.header {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--theme-text-main);
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--theme-text-sub);
+  margin-top: 8px;
+  display: block;
+  font-weight: 300;
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.question-card {
+  padding: 20px;
+  border-radius: var(--border-radius-card);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.question-header {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.question-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--theme-primary);
+  margin-right: 8px;
+  opacity: 0.8;
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+.question-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text-main);
+}
+
+/* Grid layout options */
+.options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+/* Column layout options */
+.options-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Base Option Card styling */
+.option-card {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.01);
+}
+
+.option-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.option-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-text-main);
+  transition: color 0.2s;
+}
+
+.option-desc {
+  font-size: 11px;
+  color: var(--theme-text-sub);
+  margin-top: 4px;
+  line-height: 1.4;
+  transition: color 0.2s;
+}
+
+/* Active State for Cards */
+.option-card.active {
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+  box-shadow: 0 6px 18px rgba(232, 160, 138, 0.25);
+  transform: translateY(-2px);
+}
+
+.option-card.active .option-label {
+  color: #FFFFFF;
+}
+
+.option-card.active .option-desc {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Row-style Card */
+.row-card {
+  flex-direction: row;
+  align-items: center;
+  padding: 14px 16px;
+  gap: 14px;
+}
+
+.row-card .option-text-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.radio-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-secondary);
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+}
+
+.option-card.active .radio-indicator {
+  border-color: #FFFFFF;
+  background-color: #FFFFFF;
+}
+
+.option-card.active .radio-indicator::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--theme-primary);
+}
+
+/* Submit Button styling */
+.submit-btn {
+  background-color: var(--theme-primary);
+  color: #FFFFFF;
+  border-radius: 26px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  border: none;
+  box-shadow: 0 8px 24px rgba(232, 160, 138, 0.3);
+  margin-top: 16px;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(232, 160, 138, 0.2);
+  opacity: 0.9;
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,47 @@
+/**app.wxss**/
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+} 
+
+button {
+  background: initial;
+}
+
+button:focus{
+  outline: 0;
+}
+
+button::after{
+  border: none;
+}
+
+
+page {
+  --theme-bg: #F7F4EF;        /* 温润米白背景 */
+  --theme-card: #FFFFFF;      /* 纯白卡片 */
+  --theme-primary: #E8A08A;   /* 蜜桃粉主色 */
+  --theme-secondary: #C6A49A; /* 奶茶暖棕辅助色 */
+  --theme-success: #9AADA2;   /* 鼠尾草绿 */
+  --theme-warning: #D98880;   /* 淡珊瑚红 */
+  --theme-text-main: #333333; /* 主文本色 */
+  --theme-text-sub: #777777;  /* 次级文本色 */
+  --border-radius-card: 16px;
+  
+  background-color: var(--theme-bg);
+  color: var(--theme-text-main);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Segoe UI, Arial, Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border-radius: var(--border-radius-card);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}

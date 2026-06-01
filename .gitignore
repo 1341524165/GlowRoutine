@@ -1,0 +1,24 @@
+# 依赖
+node_modules/
+miniprogram_npm/
+
+# IDE & 微信开发者工具
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 本地配置（含个人 AppID）
+project.private.config.json
+
+# AI 工具本地运行状态
+.superpowers/
+.agents/
+
+# 日志
+*.log
+

@@ -1,0 +1,363 @@
+.container {
+  padding: 16px 20px 100px;
+  background-color: var(--theme-bg);
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 头部样式 */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-text {
+  font-size: 12px;
+  color: var(--theme-text-sub);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.greeting-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--theme-text-main);
+  margin-top: 4px;
+}
+
+.skin-profile-badge {
+  background: rgba(232, 160, 138, 0.15);
+  border: 1px solid rgba(232, 160, 138, 0.2);
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  transition: all 0.2s ease;
+}
+
+.skin-profile-badge:active {
+  transform: scale(0.95);
+  background: rgba(232, 160, 138, 0.25);
+}
+
+.profile-type {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--theme-primary);
+}
+
+.profile-sensitivity {
+  font-size: 9px;
+  color: var(--theme-secondary);
+  margin-top: 1px;
+}
+
+/* 警报调节卡片 */
+.alert-control-card {
+  padding: 16px;
+  margin-bottom: 20px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.alert-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.alert-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-text-main);
+}
+
+.alert-msg-box {
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: all 0.3s;
+}
+
+.alert-msg-box.danger {
+  background-color: rgba(217, 136, 128, 0.12);
+  border-left: 4px solid var(--theme-warning);
+}
+
+.alert-msg-box.safe {
+  background-color: rgba(154, 173, 162, 0.12);
+  border-left: 4px solid var(--theme-success);
+}
+
+.alert-msg-text {
+  font-size: 12px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.alert-msg-box.danger .alert-msg-text {
+  color: #c0392b;
+}
+
+.alert-msg-box.safe .alert-msg-text {
+  color: #27ae60;
+}
+
+/* 早晚日程选项卡 */
+.tab-header {
+  display: flex;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  border-radius: 20px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 6px;
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+.tab-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-text-sub);
+}
+
+.tab-btn.active {
+  background-color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.tab-btn.active .tab-label {
+  color: var(--theme-primary);
+}
+
+/* 步骤卡片列表 */
+.steps-scroll {
+  flex: 1;
+}
+
+.steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 24px;
+}
+
+.step-card {
+  display: flex;
+  padding: 18px 16px;
+  gap: 14px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  align-items: flex-start;
+}
+
+.step-card:active {
+  transform: scale(0.99);
+}
+
+/* Checkbox style */
+.checkbox-container {
+  padding-top: 2px;
+}
+
+.custom-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-secondary);
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-checkbox.checked {
+  background-color: var(--theme-success);
+  border-color: var(--theme-success);
+}
+
+.custom-checkbox.checked::after {
+  content: '✓';
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-badge {
+  font-size: 10px;
+  background-color: var(--theme-secondary);
+  color: #FFFFFF;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+  opacity: 0.85;
+}
+
+.step-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--theme-text-sub);
+}
+
+.step-requirement {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--theme-text-main);
+  margin-top: 6px;
+  display: block;
+}
+
+.step-desc {
+  font-size: 12px;
+  color: var(--theme-text-sub);
+  margin-top: 4px;
+  line-height: 1.5;
+  display: block;
+}
+
+/* Completed Step status styles */
+.step-card.completed {
+  opacity: 0.65;
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.step-card.completed .step-requirement {
+  text-decoration: line-through;
+  color: var(--theme-text-sub);
+}
+
+/* 柜内适配单品 Badge */
+.product-badge {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background-color: rgba(154, 173, 162, 0.12);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed rgba(154, 173, 162, 0.3);
+}
+
+.product-badge.empty {
+  background-color: rgba(217, 136, 128, 0.08);
+  border-color: rgba(217, 136, 128, 0.2);
+}
+
+.badge-icon {
+  font-size: 12px;
+}
+
+.product-info {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--theme-success);
+}
+
+.product-badge.empty .product-info {
+  color: var(--theme-warning);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--theme-text-sub);
+  font-style: italic;
+}
+
+/* 底部打卡悬浮 */
+.footer-action {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(to top, var(--theme-bg) 80%, rgba(247, 244, 239, 0));
+  padding: 16px 20px 24px;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.checkin-btn {
+  width: 100%;
+  background-color: var(--theme-primary);
+  color: #FFFFFF;
+  border-radius: 26px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  border: none;
+  box-shadow: 0 8px 24px rgba(232, 160, 138, 0.35);
+  line-height: 1.2;
+}
+
+.checkin-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(232, 160, 138, 0.2);
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-up {
+  opacity: 0;
+  transform: translateY(15px);
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

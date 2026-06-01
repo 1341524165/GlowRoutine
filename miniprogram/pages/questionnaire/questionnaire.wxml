@@ -1,0 +1,97 @@
+<view class="container">
+  <view class="header animate-fade-in">
+    <text class="title">测测你的肤况档案</text>
+    <text class="subtitle">2分钟获取科学定制护肤日历</text>
+  </view>
+
+  <view class="form-container">
+    <!-- 肤感选择 -->
+    <view class="question-card glass-card animate-slide-up">
+      <view class="question-header">
+        <text class="question-num">01</text>
+        <text class="question-title">你的日常肤感是？</text>
+      </view>
+      <view class="options-grid">
+        <view class="option-card {{skinType === 'oily' ? 'active' : ''}}" bindtap="selectSkinType" data-value="oily">
+          <text class="option-label">偏油</text>
+          <text class="option-desc">经常出油，毛孔明显</text>
+        </view>
+        <view class="option-card {{skinType === 'dry' ? 'active' : ''}}" bindtap="selectSkinType" data-value="dry">
+          <text class="option-label">偏干</text>
+          <text class="option-desc">经常紧绷，易起皮</text>
+        </view>
+        <view class="option-card {{skinType === 'combination' ? 'active' : ''}}" bindtap="selectSkinType" data-value="combination">
+          <text class="option-label">混合性</text>
+          <text class="option-desc">T区油两颊干</text>
+        </view>
+        <view class="option-card {{skinType === 'unknown' ? 'active' : ''}}" bindtap="selectSkinType" data-value="unknown">
+          <text class="option-label">不确定</text>
+          <text class="option-desc">肤况多变，难以界定</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 敏感度 -->
+    <view class="question-card glass-card animate-slide-up" style="animation-delay: 0.1s;">
+      <view class="question-header">
+        <text class="question-num">02</text>
+        <text class="question-title">你的皮肤敏感程度是？</text>
+      </view>
+      <view class="options-column">
+        <view class="option-card row-card {{sensitivity === 'severe' ? 'active' : ''}}" bindtap="selectSensitivity" data-value="severe">
+          <view class="radio-indicator"></view>
+          <view class="option-text-group">
+            <text class="option-label">容易刺痛</text>
+            <text class="option-desc">换季或使用新护肤品时，极易泛红、发烫或红肿刺痛</text>
+          </view>
+        </view>
+        <view class="option-card row-card {{sensitivity === 'moderate' ? 'active' : ''}}" bindtap="selectSensitivity" data-value="moderate">
+          <view class="radio-indicator"></view>
+          <view class="option-text-group">
+            <text class="option-label">偶尔泛红</text>
+            <text class="option-desc">暴晒、吃辣或熬夜后偶有泛红或紧绷不适</text>
+          </view>
+        </view>
+        <view class="option-card row-card {{sensitivity === 'stable' ? 'active' : ''}}" bindtap="selectSensitivity" data-value="stable">
+          <view class="radio-indicator"></view>
+          <view class="option-text-group">
+            <text class="option-label">基本稳定</text>
+            <text class="option-desc">耐受力强，很少出现过敏、泛红或刺痛感</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 护肤目标 -->
+    <view class="question-card glass-card animate-slide-up" style="animation-delay: 0.2s;">
+      <view class="question-header">
+        <text class="question-num">03</text>
+        <text class="question-title">你的当前护肤主要目标是？(多选)</text>
+      </view>
+      <view class="options-grid">
+        <view class="option-card {{goalsMap.hydrate ? 'active' : ''}}" bindtap="toggleGoal" data-value="hydrate">
+          <text class="option-icon">💧</text>
+          <text class="option-label">补水保湿</text>
+        </view>
+        <view class="option-card {{goalsMap.oil_control ? 'active' : ''}}" bindtap="toggleGoal" data-value="oil_control">
+          <text class="option-icon">🍃</text>
+          <text class="option-label">控油清爽</text>
+        </view>
+        <view class="option-card {{goalsMap.acne_marks ? 'active' : ''}}" bindtap="toggleGoal" data-value="acne_marks">
+          <text class="option-icon">✨</text>
+          <text class="option-label">淡化痘印</text>
+        </view>
+        <view class="option-card {{goalsMap.anti_aging ? 'active' : ''}}" bindtap="toggleGoal" data-value="anti_aging">
+          <text class="option-icon">⏳</text>
+          <text class="option-label">抗初老</text>
+        </view>
+        <view class="option-card {{goalsMap.barrier ? 'active' : ''}}" bindtap="toggleGoal" data-value="barrier">
+          <text class="option-icon">🛡️</text>
+          <text class="option-label">屏障修护</text>
+        </view>
+      </view>
+    </view>
+
+    <button class="submit-btn animate-slide-up" style="animation-delay: 0.3s;" bindtap="onSubmit">生成护肤日历</button>
+  </view>
+</view>

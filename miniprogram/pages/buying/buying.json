@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "disclaimer": "../../components/disclaimer/disclaimer"
+  },
+  "navigationBarTitleText": "冷静拔草"
+}

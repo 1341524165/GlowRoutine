@@ -1,0 +1,413 @@
+.container {
+  padding: 20px 16px;
+  background-color: var(--theme-bg);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* 顶部标题区 */
+.header-section {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.page-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--theme-text-main);
+  letter-spacing: 1px;
+}
+.page-subtitle {
+  font-size: 12px;
+  color: var(--theme-text-sub);
+  margin-top: 6px;
+  display: block;
+}
+
+/* 输入面板卡片 */
+.input-card {
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--theme-text-main);
+  margin-bottom: 16px;
+}
+.title-icon {
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+/* 输入Tab切换 */
+.input-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 20px;
+  padding: 3px;
+  margin-bottom: 20px;
+}
+.tab-item {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  padding: 8px 0;
+  color: var(--theme-text-sub);
+  border-radius: 17px;
+  transition: all 0.2s ease;
+}
+.tab-item.active {
+  background: #FFFFFF;
+  color: var(--theme-primary);
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 表单元素 */
+.form-item {
+  margin-bottom: 16px;
+}
+.form-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--theme-text-sub);
+  margin-bottom: 8px;
+  display: block;
+}
+.p-input {
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--theme-text-main);
+  border: 1px solid rgba(0, 0, 0, 0.02);
+}
+.p-textarea {
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--theme-text-main);
+  width: 100%;
+  box-sizing: border-box;
+  height: 100px;
+  border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+/* 图片上传器 */
+.image-uploader {
+  width: 100%;
+  height: 120px;
+  border: 2px dashed rgba(198, 164, 154, 0.4);
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.upload-icon {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+.upload-text {
+  font-size: 12px;
+  color: var(--theme-secondary);
+}
+.preview-img {
+  width: 100%;
+  height: 100%;
+}
+.upload-mask {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.5);
+  color: #FFFFFF;
+  text-align: center;
+  font-size: 11px;
+  padding: 4px 0;
+}
+
+/* 分析按钮 */
+.analyze-btn {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: bold;
+  border-radius: 24px;
+  padding: 12px;
+  margin-top: 10px;
+  border: none;
+  box-shadow: 0 6px 16px rgba(232, 160, 138, 0.3);
+}
+.btn-hover {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+/* 莫兰迪高亮加载动效 */
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(247, 244, 239, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+}
+.loading-content {
+  width: 75%;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.morandi-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  height: 40px;
+}
+.spinner-dot {
+  width: 14px;
+  height: 14px;
+  margin: 0 6px;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+.dot1 {
+  background-color: var(--theme-primary);
+  animation-delay: -0.32s;
+}
+.dot2 {
+  background-color: var(--theme-secondary);
+  animation-delay: -0.16s;
+}
+.dot3 {
+  background-color: var(--theme-success);
+}
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.3;
+  }
+  40% {
+    transform: scale(1.0);
+    opacity: 1;
+  }
+}
+.loading-text {
+  font-size: 13px;
+  color: var(--theme-text-sub);
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+/* 冷静分析证书结果 */
+.result-card {
+  padding: 24px 20px;
+  margin-bottom: 30px;
+  border: 1.5px solid var(--theme-primary);
+  position: relative;
+  overflow: hidden;
+}
+.certificate-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1.5px dashed rgba(198, 164, 154, 0.3);
+  padding-bottom: 12px;
+}
+.cert-stamp {
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--theme-secondary);
+  border: 1.5px solid var(--theme-secondary);
+  padding: 3px 10px;
+  border-radius: 4px;
+  transform: rotate(-3deg);
+  letter-spacing: 1px;
+}
+.indicator-group {
+  display: flex;
+  align-items: center;
+}
+.indicator-light {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.15);
+}
+.indicator-light.green {
+  background-color: var(--theme-success);
+  box-shadow: 0 0 10px rgba(154, 173, 162, 0.6);
+}
+.indicator-light.red {
+  background-color: var(--theme-warning);
+  box-shadow: 0 0 10px rgba(217, 136, 128, 0.6);
+}
+.indicator-text {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--theme-text-sub);
+}
+
+/* 分数大屏 */
+.score-showcase {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 12px;
+  border-radius: 12px;
+}
+.score-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+}
+.score-ring.high {
+  background: rgba(154, 173, 162, 0.15);
+  border: 2px solid var(--theme-success);
+}
+.score-ring.low {
+  background: rgba(217, 136, 128, 0.15);
+  border: 2px solid var(--theme-warning);
+}
+.score-num {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--theme-text-main);
+}
+.score-unit {
+  font-size: 11px;
+  color: var(--theme-text-sub);
+  margin-left: 2px;
+  margin-top: 8px;
+}
+.score-desc {
+  flex: 1;
+}
+.score-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--theme-text-main);
+  display: block;
+}
+.score-sub {
+  font-size: 11px;
+  color: var(--theme-text-sub);
+  margin-top: 4px;
+  display: block;
+  line-height: 1.4;
+}
+
+/* 详细分析 */
+.detail-section {
+  display: flex;
+  flex-direction: column;
+}
+.detail-item {
+  margin-bottom: 16px;
+}
+.detail-title {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--theme-secondary);
+  margin-bottom: 6px;
+}
+.icon-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  margin-right: 8px;
+}
+.icon-circle.water { background: rgba(198, 164, 154, 0.15); }
+.icon-circle.danger { background: rgba(217, 136, 128, 0.15); }
+.icon-circle.overlap { background: rgba(154, 173, 162, 0.15); }
+.icon-circle.judge { background: rgba(232, 160, 138, 0.15); }
+
+.detail-content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--theme-text-main);
+  padding-left: 28px;
+}
+.detail-content.warning-text {
+  color: var(--theme-warning);
+  font-weight: 500;
+}
+
+/* 闺蜜毒舌判决箱 */
+.verdict-box {
+  background-color: rgba(232, 160, 138, 0.08);
+  border-left: 3px solid var(--theme-primary);
+  padding: 12px 14px;
+  border-radius: 0 8px 8px 0;
+  margin-top: 8px;
+  margin-bottom: 20px;
+}
+.verdict-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--theme-primary);
+  font-weight: 700;
+  font-style: italic;
+  padding-left: 28px;
+}
+
+/* 海报分享按钮 */
+.share-card-btn {
+  background-color: var(--theme-success);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 20px;
+  padding: 10px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(154, 173, 162, 0.3);
+}
+.share-tip {
+  font-size: 11px;
+  color: var(--theme-text-sub);
+  text-align: center;
+  display: block;
+  margin-top: 10px;
+}
+
+/* 隐藏的海报Canvas */
+.hidden-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: 0;
+  width: 360px;
+  height: 640px;
+  z-index: -1;
+  visibility: hidden;
+}
