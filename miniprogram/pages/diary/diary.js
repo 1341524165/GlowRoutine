@@ -1,3 +1,8 @@
+const localData = require('../../utils/localData');
+const entitlementRules = require('../../utils/entitlementRules');
+const cloudEnhancements = require('../../utils/cloudEnhancements');
+const reportFallback = require('../../utils/reportFallback');
+
 Page({
   data: {
     oiliness: 3,
@@ -47,7 +52,7 @@ Page({
    * 检查用户是否创建了肤况档案
    */
   checkUserSession() {
-    const hasProfile = wx.getStorageSync('has_skin_profile');
+    const hasProfile = !!localData.getSkinProfile();
     if (!hasProfile) {
       wx.showModal({
         title: '温馨提示',
@@ -68,80 +73,27 @@ Page({
    * 加载打卡统计数据并获取对比照路径
    */
   loadCheckInStats() {
-    const loadFromLocal = () => {
-      const localLogs = wx.getStorageSync('skin_diary_logs') || [];
-      const sevenDaysAgoTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const localCount = localLogs.filter(log => {
-        const dStr = log.created_at || log.date;
-        const logDate = new Date(dStr).getTime();
-        return logDate >= sevenDaysAgoTime;
-      }).length;
+    const localLogs = localData.getSkinDiaries();
+    const sevenDaysAgoTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const localCount = localLogs.filter(log => {
+      const dStr = log.created_at || log.date;
+      const logDate = new Date(dStr).getTime();
+      return logDate >= sevenDaysAgoTime;
+    }).length;
 
-      const photoRecords = localLogs.filter(log => log.photo_path && log.photo_path !== '');
-      let beforeUrl = 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600'; // 默认 Before
-      let afterUrl = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600';  // 默认 After
+    const photoRecords = localLogs.filter(log => (log.local_photo_path || log.photo_path || log.cloud_file_id));
+    let beforeUrl = 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600';
+    let afterUrl = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600';
 
-      if (photoRecords.length >= 2) {
-        // 本地日记数组中是最新打卡在最前，因此最老的一张在末尾
-        beforeUrl = photoRecords[photoRecords.length - 1].photo_path;
-        afterUrl = photoRecords[0].photo_path;
-      } else if (photoRecords.length === 1) {
-        afterUrl = photoRecords[0].photo_path;
-      }
-
-      this.setData({ checkInCount: localCount });
-      this.updateCompareImages(beforeUrl, afterUrl);
-    };
-
-    if (!wx.cloud) {
-      loadFromLocal();
-      return;
+    if (photoRecords.length >= 2) {
+      beforeUrl = photoRecords[photoRecords.length - 1].local_photo_path || photoRecords[photoRecords.length - 1].photo_path || photoRecords[photoRecords.length - 1].cloud_file_id;
+      afterUrl = photoRecords[0].local_photo_path || photoRecords[0].photo_path || photoRecords[0].cloud_file_id;
+    } else if (photoRecords.length === 1) {
+      afterUrl = photoRecords[0].local_photo_path || photoRecords[0].photo_path || photoRecords[0].cloud_file_id;
     }
 
-    try {
-      const db = wx.cloud.database();
-      const _ = db.command;
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      
-      // 统计最近 7 天内的打卡次数以判断是否解锁周报
-      db.collection('skin_diary').where({
-        created_at: _.gte(sevenDaysAgo)
-      }).count().then(res => {
-        this.setData({ checkInCount: res.total });
-      }).catch(err => {
-        console.error('统计打卡失败，切换本地数据:', err);
-        loadFromLocal();
-      });
-
-      // 动态拉取 Before/After 皮肤对比照片
-      db.collection('skin_diary')
-        .where({
-          photo_path: db.command.exists(true).and(db.command.neq(''))
-        })
-        .orderBy('created_at', 'asc')
-        .get()
-        .then(res => {
-          const records = res.data || [];
-          let beforeUrl = 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600'; // 默认 Before
-          let afterUrl = 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600';  // 默认 After
-
-          if (records.length >= 2) {
-            // 最早一张照片作为 Before，最新一张照片作为 After
-            beforeUrl = records[0].photo_path;
-            afterUrl = records[records.length - 1].photo_path;
-          } else if (records.length === 1) {
-            afterUrl = records[0].photo_path;
-          }
-
-          this.updateCompareImages(beforeUrl, afterUrl);
-        }).catch(err => {
-          console.error('拉取皮肤照片记录失败，使用本地缓存:', err);
-          loadFromLocal();
-        });
-    } catch (e) {
-      console.warn('云数据库打卡统计加载失败，已采用本地缓存:', e);
-      loadFromLocal();
-    }
+    this.setData({ checkInCount: localCount });
+    this.updateCompareImages(beforeUrl, afterUrl);
   },
 
   /**
@@ -200,26 +152,43 @@ Page({
   /**
    * 异步上传照片到微信云开发存储
    */
-  uploadPhotoToCloud() {
-    return new Promise((resolve, reject) => {
+  uploadPhotoToCloud(localDiaryId) {
+    return new Promise(resolve => {
       if (!this.data.photoPath) {
         resolve('');
         return;
       }
-      
+
+      const entitlement = localData.getEntitlementState();
+      const retention = entitlementRules.getCloudPhotoRetention(entitlement);
+      const cloudPhotos = localData.getSkinDiaries().filter(item => item.cloud_file_id);
+      const prompt = entitlementRules.getThresholdPrompt('cloud_photo_retention', cloudPhotos.length, retention, entitlement);
+
+      if (prompt.level === 'at_threshold') {
+        wx.showToast({ title: '云照片空间已满，本次仅保存在本地', icon: 'none' });
+        resolve('');
+        return;
+      }
+      if (prompt.level === 'near_threshold') {
+        wx.showToast({ title: '云照片空间快满了', icon: 'none' });
+      }
+
       const filePath = this.data.photoPath;
       const cloudPath = `skin_diaries/${Date.now()}-${Math.floor(Math.random() * 100000)}.jpg`;
-      
-      wx.cloud.uploadFile({
-        cloudPath,
-        filePath,
-        success: res => {
-          console.log('[上传成功] 云存储路径:', res.fileID);
-          resolve(res.fileID);
-        },
-        fail: e => {
-          console.error('[上传失败] 错误信息:', e);
-          wx.showToast({ title: '照片上传失败，正在以无图模式保存', icon: 'none' });
+      cloudEnhancements.uploadFileSafe(cloudPath, filePath).then(result => {
+        if (result.ok) {
+          localData.updateSkinDiary(localDiaryId, {
+            cloud_file_id: result.data,
+            photo_path: result.data,
+            photo_sync_status: 'synced'
+          });
+          resolve(result.data);
+        } else {
+          localData.updateSkinDiary(localDiaryId, {
+            photo_sync_status: 'failed',
+            sync_error: result.error
+          });
+          wx.showToast({ title: '照片上传失败，日记已本地保存', icon: 'none' });
           resolve('');
         }
       });
@@ -231,68 +200,67 @@ Page({
    */
   async saveDiary() {
     wx.showLoading({ title: '正在保存日记...' });
-    
-    try {
-      // 1. 先上传图片（若有）
-      const cloudPhotoPath = await this.uploadPhotoToCloud();
-      
-      // 2. 保存到 NoSQL skin_diary 集合
-      const db = wx.cloud.database();
-      const activeTriggers = this.data.triggerOptions
-        .filter(t => t.checked)
-        .map(t => t.value);
 
-      const isRednessChecked = this.data.statusOptions.find(s => s.value === 'redness')?.checked || false;
-      const isAcneChecked = this.data.statusOptions.find(s => s.value === 'acne')?.checked || false;
-      const isPeelingChecked = this.data.statusOptions.find(s => s.value === 'peeling')?.checked || false;
+    const activeTriggers = this.data.triggerOptions
+      .filter(t => t.checked)
+      .map(t => t.value);
 
-      db.collection('skin_diary').add({
-        data: {
-          date: new Date().toISOString().split('T')[0],
-          ratings: {
-            oiliness: this.data.oiliness,
-            redness: isRednessChecked ? 5 : 1,
-            acne: isAcneChecked ? 5 : 1,
-            peeling: isPeelingChecked ? 5 : 1
-          },
-          statuses: [
-            ...(isRednessChecked ? ['red', 'redness'] : []),
-            ...(isAcneChecked ? ['acne'] : []),
-            ...(isPeelingChecked ? ['peel', 'peeling'] : [])
-          ],
-          triggers: activeTriggers,
-          photo_path: cloudPhotoPath,
-          created_at: new Date()
-        }
-      }).then(() => {
-        wx.hideLoading();
-        wx.showToast({
-          title: '今日打卡已保存！',
-          icon: 'success',
-          duration: 2000
-        });
+    const isRednessChecked = this.data.statusOptions.find(s => s.value === 'redness')?.checked || false;
+    const isAcneChecked = this.data.statusOptions.find(s => s.value === 'acne')?.checked || false;
+    const isPeelingChecked = this.data.statusOptions.find(s => s.value === 'peeling')?.checked || false;
 
-        // 重新加载统计与对比
-        this.loadCheckInStats();
-        
-        // 重置打卡表单
-        this.setData({
-          photoPath: '',
-          oiliness: 3,
-          statusOptions: this.data.statusOptions.map(s => ({ ...s, checked: false })),
-          triggerOptions: this.data.triggerOptions.map(t => ({ ...t, checked: false }))
-        });
+    const localDiary = localData.addSkinDiary({
+      date: new Date().toISOString().split('T')[0],
+      ratings: {
+        oiliness: this.data.oiliness,
+        redness: isRednessChecked ? 5 : 1,
+        acne: isAcneChecked ? 5 : 1,
+        peeling: isPeelingChecked ? 5 : 1
+      },
+      statuses: [
+        ...(isRednessChecked ? ['red', 'redness'] : []),
+        ...(isAcneChecked ? ['acne'] : []),
+        ...(isPeelingChecked ? ['peel', 'peeling'] : [])
+      ],
+      triggers: activeTriggers,
+      local_photo_path: this.data.photoPath,
+      created_at: new Date().toISOString()
+    });
 
-      }).catch(err => {
-        wx.hideLoading();
-        console.error('日记入库失败:', err);
-        wx.showToast({ title: '数据库保存失败，请稍后重试', icon: 'none' });
+    wx.hideLoading();
+    wx.showToast({
+      title: '今日打卡已保存！',
+      icon: 'success',
+      duration: 2000
+    });
+
+    this.loadCheckInStats();
+    this.setData({
+      photoPath: '',
+      oiliness: 3,
+      statusOptions: this.data.statusOptions.map(s => ({ ...s, checked: false })),
+      triggerOptions: this.data.triggerOptions.map(t => ({ ...t, checked: false }))
+    });
+
+    const cloudPhotoPath = await this.uploadPhotoToCloud(localDiary._id);
+    const cloudPayload = {
+      ...localDiary,
+      photo_path: cloudPhotoPath,
+      cloud_file_id: cloudPhotoPath,
+      created_at: new Date(localDiary.created_at)
+    };
+    const result = await cloudEnhancements.addDocumentSafe('skin_diary', cloudPayload);
+    if (result.ok && result.data && result.data._id) {
+      localData.updateSkinDiary(localDiary._id, {
+        cloud_id: result.data._id,
+        sync_status: 'synced',
+        synced_at: new Date().toISOString()
       });
-
-    } catch (e) {
-      wx.hideLoading();
-      console.error('打卡保存时发生致命异常:', e);
-      wx.showToast({ title: '保存出错，请重试', icon: 'none' });
+    } else if (!result.ok) {
+      localData.updateSkinDiary(localDiary._id, {
+        sync_status: 'pending',
+        sync_error: result.error
+      });
     }
   },
 
@@ -524,63 +492,35 @@ Page({
   /**
    * 调用云函数生成 AI 趋势周报
    */
-  triggerAnalysis() {
+  async triggerAnalysis() {
     wx.showLoading({ title: 'AI 闺蜜分析数据中...' });
-    
-    try {
-      wx.cloud.callFunction({
-        name: 'skinDiaryAnalysis',
-        success: (res) => {
-          wx.hideLoading();
-          if (res.result && res.result.success) {
-            const report = res.result.data;
-            const reportTime = new Date().toLocaleString();
-            
-            this.setData({
-              isReportUnlocked: true,
-              weeklyReport: report,
-              reportTime
-            });
 
-            // 存入缓存，无需重复看广告
-            wx.setStorageSync('report_unlocked', true);
-            wx.setStorageSync('last_weekly_report', report);
-            wx.setStorageSync('last_report_time', reportTime);
-            
-            wx.showToast({ title: '周度报告已生成！', icon: 'success' });
-          } else {
-            console.error('云端分析错误:', res.result?.error);
-            wx.showToast({ title: 'AI 闺蜜偷懒了，请重试', icon: 'none' });
-          }
-        },
-        fail: (err) => {
-          wx.hideLoading();
-          console.error('调用云端分析失败:', err);
-          wx.showToast({ title: '网络超时，请稍后重试', icon: 'none' });
-        }
-      });
-    } catch (e) {
-      wx.hideLoading();
-      console.warn('云函数调用失败，已切换至本地智能分析:', e);
-      // 离线状态本地分析回填，保证100%可用
-      setTimeout(() => {
-        const localReport = {
-          oilTrend: '水分充足，皮脂分泌趋于平衡',
-          rednessControl: '屏障泛红状况已得到明显改善，耐受度提升',
-          suggestions: '【离线AI分析】建议继续使用当前的氨基酸洁面与面霜。近期皮肤状态回稳，可按步骤维持防晒，保持规律作息。'
-        };
-        const reportTime = new Date().toLocaleString();
-        this.setData({
-          isReportUnlocked: true,
-          weeklyReport: localReport,
-          reportTime
-        });
-        wx.setStorageSync('report_unlocked', true);
-        wx.setStorageSync('last_weekly_report', localReport);
-        wx.setStorageSync('last_report_time', reportTime);
-        wx.showToast({ title: '离线分析成功！', icon: 'success' });
-      }, 1000);
-    }
+    const entitlement = localData.getEntitlementState();
+    const reportLimit = entitlementRules.getReportArchiveLimit(entitlement);
+    const diaries = localData.getSkinDiaries();
+    const cabinet = localData.getCabinetProducts();
+    const result = await cloudEnhancements.callFunctionSafe('skinDiaryAnalysis', { diaries, cabinet });
+
+    const report = result.ok
+      ? result.data
+      : reportFallback.buildWeeklyReportFallback(diaries.slice(0, 7), cabinet);
+    const reportTime = new Date().toLocaleString();
+
+    localData.saveAiReport({
+      type: 'weekly',
+      data: report,
+      source: result.ok ? 'cloud' : 'local_fallback',
+      created_at: new Date().toISOString()
+    }, reportLimit);
+
+    this.setData({
+      isReportUnlocked: true,
+      weeklyReport: report,
+      reportTime
+    });
+
+    wx.hideLoading();
+    wx.showToast({ title: result.ok ? '周度报告已生成！' : '已生成本地分析', icon: 'success' });
   },
 
   onUnload() {
