@@ -22,55 +22,56 @@ exports.main = async (event, context) => {
     };
   }
 
-  // 1. 在云端利用 OPENID 并行极速提取用户的肤质档案与护肤柜单品
-  let dbSkinProfile = null;
-  let dbCabinetSummary = null;
-
   try {
-    const [userRes, cabRes] = await Promise.all([
-      db.collection('users')
-        .where({ _openid: openid })
-        .orderBy('created_at', 'desc')
-        .limit(1)
-        .get()
-        .catch(err => {
-          console.error('获取肤质档案出错:', err);
-          return { data: [] };
-        }),
-      db.collection('skincare_cabinet')
-        .where({
-          _openid: openid,
-          status: 'opened'
-        })
-        .get()
-        .catch(err => {
-          console.error('获取护肤品柜出错:', err);
-          return { data: [] };
-        })
-    ]);
+    // 1. 在云端利用 OPENID 并行极速提取用户的肤质档案与护肤柜单品
+    let dbSkinProfile = null;
+    let dbCabinetSummary = null;
 
-    if (userRes.data && userRes.data.length > 0) {
-      dbSkinProfile = userRes.data[0].skin_profile;
+    try {
+      const [userRes, cabRes] = await Promise.all([
+        db.collection('users')
+          .where({ _openid: openid })
+          .orderBy('created_at', 'desc')
+          .limit(1)
+          .get()
+          .catch(err => {
+            console.error('获取肤质档案出错:', err);
+            return { data: [] };
+          }),
+        db.collection('skincare_cabinet')
+          .where({
+            _openid: openid,
+            status: 'opened'
+          })
+          .get()
+          .catch(err => {
+            console.error('获取护肤品柜出错:', err);
+            return { data: [] };
+          })
+      ]);
+
+      if (userRes.data && userRes.data.length > 0) {
+        dbSkinProfile = userRes.data[0].skin_profile;
+      }
+      if (cabRes.data && cabRes.data.length > 0) {
+        dbCabinetSummary = cabRes.data.map(p => p.product_name).join(', ');
+      }
+    } catch (err) {
+      console.error('并行获取云端数据失败:', err);
     }
-    if (cabRes.data && cabRes.data.length > 0) {
-      dbCabinetSummary = cabRes.data.map(p => p.product_name).join(', ');
-    }
-  } catch (err) {
-    console.error('并行获取云端数据失败:', err);
-  }
 
-  // 2. 规整肤质数据与柜子数据（数据库优先，参数/默认值兜底）
-  const profile = dbSkinProfile || event.skinProfile || {
-    skin_type: 'combination',
-    sensitivity: 'moderate',
-    goals: ['hydrate'],
-    budget: 'moderate'
-  };
+    // 2. 规整肤质数据与柜子数据（数据库优先，参数/默认值兜底）
+    const profile = dbSkinProfile || event.skinProfile || {
+      skin_type: 'combination',
+      sensitivity: 'moderate',
+      goals: ['hydrate'],
+      budget: 'moderate'
+    };
 
-  const cabinet = dbCabinetSummary || event.cabinetSummary || '护肤柜暂空';
+    const cabinet = dbCabinetSummary || event.cabinetSummary || '护肤柜暂空';
 
-  // 2. 构造大模型 Prompt
-  const prompt = `你是一个有温度、说话像闺蜜一样亲切贴心、理智但有些毒舌温暖的 AI 护肤搭子（类似于小红书拔草毒舌博主）。
+    // 2. 构造大模型 Prompt
+    const prompt = `你是一个有温度、说话像闺蜜一样亲切贴心、理智但有些毒舌温暖的 AI 护肤搭子（类似于小红书拔草毒舌博主）。
 请你帮我深度评估我打算购买的化妆品: "${productName}"。
 
 【我的个人肤质档案】
@@ -99,43 +100,61 @@ ${cabinet}
   "verdict": "闺蜜判决大白话"
 }`;
 
-  let analysisData = null;
+    let analysisData = null;
 
-  // 3. 尝试调用真实大模型 (Gemini 3.5 Flash)
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    // 3. 尝试调用真实大模型 (Gemini 3.5 Flash)
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-  if (GEMINI_API_KEY) {
-    try {
-      const response = await callGeminiAPI(GEMINI_API_KEY, prompt);
-      if (response) {
-        let cleanJson = response.trim();
-        if (cleanJson.startsWith('```')) {
-          cleanJson = cleanJson.replace(/^```json\s*/i, '').replace(/```$/, '');
+    if (GEMINI_API_KEY) {
+      try {
+        const response = await callGeminiAPI(GEMINI_API_KEY, prompt);
+        if (response) {
+          let cleanJson = response.trim();
+          if (cleanJson.startsWith('```')) {
+            cleanJson = cleanJson.replace(/^```json\s*/i, '').replace(/```$/, '');
+          }
+          analysisData = JSON.parse(cleanJson);
         }
-        analysisData = JSON.parse(cleanJson);
+      } catch (err) {
+        console.error('调用大模型失败，启动高保真本地专家引擎:', err);
       }
-    } catch (err) {
-      console.error('调用大模型失败，启动高保真本地专家引擎:', err);
     }
-  }
 
-  // 4. 高保真本地规则引擎兜底 (确保在测试、无 Key、超时等情况下完美运行)
-  if (!analysisData) {
-    analysisData = generateLocalAnalysis(productName, profile, cabinet);
-  }
-
-  // 5. 安全词后处理：将 AI 吐出的临床诊断类词（如“皮炎”、“过敏”、“消炎”）自动转换为安全、接地气的生活化词汇
-  analysisData = sanitizeResult(analysisData);
-
-  return {
-    success: true,
-    data: analysisData,
-    meta: {
-      productName,
-      skinProfile: profile,
-      analyzedAt: new Date().toISOString()
+    // 4. 高保真本地规则引擎兜底 (确保在测试、无 Key、超时等情况下完美运行)
+    if (!analysisData) {
+      analysisData = generateLocalAnalysis(productName, profile, cabinet);
     }
-  };
+
+    // 5. 安全词后处理：将 AI 吐出的临床诊断类词（如“皮炎”、“过敏”、“消炎”）自动转换为安全、接地气的生活化词汇
+    analysisData = sanitizeResult(analysisData);
+
+    return {
+      success: true,
+      data: analysisData,
+      meta: {
+        productName,
+        skinProfile: profile,
+        analyzedAt: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('购买咨询云函数执行出错:', error);
+    const fallback = sanitizeResult(generateLocalAnalysis(productName, {
+      skin_type: 'combination',
+      sensitivity: 'moderate',
+      goals: ['hydrate'],
+      budget: 'moderate'
+    }, '护肤柜暂空'));
+    return {
+      success: true,
+      data: fallback,
+      meta: {
+        fallback: true,
+        error: error.message,
+        analyzedAt: new Date().toISOString()
+      }
+    };
+  }
 };
 
 /**

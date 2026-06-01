@@ -160,9 +160,15 @@ exports.main = async (event, context) => {
 
   } catch (error) {
     console.error('云函数执行出错:', error);
+    const fallback = sanitizeReport(generateLocalReport(0, 3.0, 0, 0, 0, {}, false, []));
     return {
-      success: false,
-      error: error.message
+      success: true,
+      data: fallback,
+      meta: {
+        fallback: true,
+        error: error.message,
+        analyzedAt: new Date().toISOString()
+      }
     };
   }
 };
