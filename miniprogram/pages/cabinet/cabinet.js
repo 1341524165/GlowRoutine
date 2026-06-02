@@ -3,11 +3,63 @@ const entitlementRules = require('../../utils/entitlementRules');
 
 Page({
   data: {
-    shelves: []
+    shelves: [],
+    isRedAlert: false
   },
 
   onShow() {
+    const isRedAlert = wx.getStorageSync('is_red_alert') || false;
+    this.setData({ isRedAlert });
     this.loadCabinetProducts();
+    this.checkClipboardAndOfferImport();
+  },
+
+  checkClipboardAndOfferImport() {
+    wx.getClipboardData({
+      success: (res) => {
+        const text = res.data || '';
+        if (text.length > 5 && (text.includes('1.') || text.includes('面霜') || text.includes('防晒') || text.includes('精华') || text.includes('水') || text.includes('乳') || text.includes('洁面'))) {
+          // 判定为化妆品列表文本，且未曾导入过
+          const lastImported = wx.getStorageSync('last_imported_clipboard');
+          if (lastImported === text) return; // 避免重复提示
+          
+          wx.showModal({
+            title: '智能导入护肤品',
+            content: '宝子，检测到您的剪贴板有一份化妆品清单，要快速批量录入护肤柜吗？✨',
+            confirmColor: '#E8A08A',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                wx.setStorageSync('last_imported_clipboard', text);
+                this.triggerBulkImport(text);
+              }
+            }
+          });
+        }
+      }
+    });
+  },
+
+  triggerBulkImport(text) {
+    wx.showLoading({ title: 'AI 智能解析清单中...' });
+    wx.cloud.callFunction({
+      name: 'skincareCabinetBulkImport',
+      data: { text }
+    }).then(res => {
+      wx.hideLoading();
+      if (res.result && res.result.success) {
+        const products = res.result.data;
+        products.forEach(p => {
+          localData.upsertCabinetProduct(p);
+        });
+        wx.showToast({ title: '成功批量录入！', icon: 'success' });
+        this.loadCabinetProducts();
+      } else {
+        wx.showToast({ title: '导入失败', icon: 'none' });
+      }
+    }).catch(err => {
+      wx.hideLoading();
+      wx.showToast({ title: '导入异常', icon: 'none' });
+    });
   },
 
   loadCabinetProducts() {
@@ -73,11 +125,14 @@ Page({
         style = 'warning';
       }
 
+      const isRestricted = prod.ingredients && (prod.ingredients.includes('A醇') || prod.ingredients.includes('酸类'));
+
       return {
         ...prod,
         remainingText,
         remainingPercent: percent,
-        remainingStyle: style
+        remainingStyle: style,
+        isRestricted: !!isRestricted
       };
     });
 
