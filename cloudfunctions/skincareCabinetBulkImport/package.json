@@ -1,0 +1,9 @@
+{
+  "name": "skincareCabinetBulkImport",
+  "version": "1.0.0",
+  "description": "Bulk import cabinet items from clipboard via LLM",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
