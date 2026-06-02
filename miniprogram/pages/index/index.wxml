@@ -40,7 +40,7 @@
   <scroll-view class="steps-scroll animate-slide-up" style="animation-delay: 0.1s;" scroll-y>
     <view class="steps-container">
       <block wx:if="{{currentSteps && currentSteps.length > 0}}">
-        <view class="step-card glass-card {{item.completed ? 'completed' : ''}}" 
+        <view class="step-card glass-card {{item.completed ? 'completed' : ''}} {{item.disabled ? 'disabled-step' : ''}}" 
               wx:for="{{currentSteps}}" 
               wx:key="index"
               bindtap="toggleStepCompletion"
@@ -87,4 +87,81 @@
     <button class="checkin-btn" bindtap="onCheckIn">完成今日护肤并打卡</button>
   </view>
 </view>
+
+<!-- 遮罩与半屏打卡抽屉 -->
+<view class="drawer-mask {{showDrawer ? 'show' : ''}}" bindtap="closeDrawer"></view>
+<view class="checkin-drawer {{showDrawer ? 'show' : ''}} {{isDetailed ? 'detailed' : ''}}">
+  <view class="drawer-header">
+    <text class="drawer-title">📋 今日日程打卡</text>
+    <text class="drawer-close" bindtap="closeDrawer">✕</text>
+  </view>
+  
+  <view class="drawer-body">
+    <view class="steps-preview">
+      <text class="label">已完成步骤：</text>
+      <text class="val">{{completedStepsText}}</text>
+    </view>
+
+    <block wx:if="{{!isDetailed}}">
+      <button class="minimal-btn" bindtap="saveMinimalCheckIn" hover-class="btn-hover">一键极简打卡 🎉</button>
+      <view class="expand-action" bindtap="toggleDetailed">
+        <text class="expand-text">✍️ 记录今日自拍与肤况细节日记</text>
+      </view>
+    </block>
+
+    <block wx:else>
+      <scroll-view scroll-y class="detailed-scroll">
+        <!-- 油腻感滑块 -->
+        <view class="slider-row">
+          <view class="slider-labels">
+            <text class="label">今日油腻感</text>
+            <text class="val">{{oiliness}} 星</text>
+          </view>
+          <slider min="1" max="5" value="{{oiliness}}" bindchange="onOilChange" activeColor="#E8A08A" block-size="20"/>
+        </view>
+        
+        <!-- 状态排查 -->
+        <view class="checkbox-row">
+          <text class="label">肤况排查 (多选)</text>
+          <checkbox-group bindchange="onStatusChange" class="badge-group">
+            <label class="badge-item {{item.checked ? 'active' : ''}}" wx:for="{{statusOptions}}" wx:key="value">
+              <checkbox value="{{item.value}}" checked="{{item.checked}}" hidden/>
+              <text>{{item.name}}</text>
+            </label>
+          </checkbox-group>
+        </view>
+
+        <!-- 诱因排查 -->
+        <view class="checkbox-row">
+          <text class="label">生活诱因排查 (多选)</text>
+          <checkbox-group bindchange="onTriggersChange" class="badge-group">
+            <label class="badge-item {{item.checked ? 'active' : ''}}" wx:for="{{triggerOptions}}" wx:key="value">
+              <checkbox value="{{item.value}}" checked="{{item.checked}}" hidden/>
+              <text>{{item.name}}</text>
+            </label>
+          </checkbox-group>
+        </view>
+
+        <!-- 拍照 -->
+        <view class="photo-row">
+          <text class="label">今日素颜自拍 (双图对比素材)</text>
+          <view class="drawer-photo-box" bindtap="onChooseImage">
+            <block wx:if="{{photoPath}}">
+              <image src="{{photoPath}}" mode="aspectFill" class="drawer-photo-preview"/>
+            </block>
+            <block wx:else>
+              <view class="drawer-photo-placeholder">＋ 拍摄/选择素颜自拍</view>
+            </block>
+          </view>
+        </view>
+      </scroll-view>
+      
+      <button class="detailed-btn" bindtap="saveDetailedCheckIn" hover-class="btn-hover">保存今日详细日记 💾</button>
+      <view class="collapse-action" bindtap="toggleDetailed">
+        <text class="expand-text">返回极简打卡模式</text>
+      </view>
+    </block>
+  </view>
+</view>
+
 <!-- Trigger compiler rebuild -->

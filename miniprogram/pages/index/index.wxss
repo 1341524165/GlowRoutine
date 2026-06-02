@@ -361,3 +361,67 @@
     transform: translateY(0);
   }
 }
+
+.drawer-mask {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4); opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease; z-index: 1000;
+}
+.drawer-mask.show { opacity: 1; pointer-events: auto; }
+
+.checkin-drawer {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #F7F4EF; border-top-left-radius: 24px; border-top-right-radius: 24px;
+  transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  z-index: 1001; padding: 24px; box-sizing: border-box; height: 280px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+}
+.checkin-drawer.show { transform: translateY(0); }
+.checkin-drawer.detailed { height: 85%; }
+
+.drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.drawer-title { font-size: 18px; font-weight: bold; color: #333; }
+.drawer-close { font-size: 20px; color: #999; padding: 5px; }
+
+.steps-preview { background: rgba(198, 164, 154, 0.08); padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; }
+.steps-preview .label { font-size: 13px; color: #777; }
+.steps-preview .val { font-size: 14px; font-weight: bold; color: #C6A49A; }
+
+.minimal-btn, .detailed-btn {
+  background: #E8A08A; color: #FFF; border-radius: 25px; font-size: 15px; font-weight: bold;
+  height: 48px; line-height: 48px; border: none; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(232, 160, 138, 0.2);
+  text-align: center;
+}
+.expand-action, .collapse-action { text-align: center; margin-top: 10px; }
+.expand-text { font-size: 13px; color: #E8A08A; font-weight: 500; }
+
+.detailed-scroll { height: calc(100% - 130px); margin-bottom: 15px; }
+.slider-row, .checkbox-row, .photo-row { margin-bottom: 20px; }
+.slider-labels { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.slider-labels .label, .checkbox-row .label, .photo-row .label { font-size: 14px; color: #333; font-weight: bold; }
+.slider-labels .val { font-size: 14px; color: #E8A08A; font-weight: bold; }
+
+.badge-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.badge-item {
+  background: #FFF; border: 1px solid #EFECE7; border-radius: 18px; padding: 6px 14px;
+  font-size: 13px; color: #555; transition: all 0.2s; display: inline-flex; align-items: center;
+}
+.badge-item.active { background: rgba(232, 160, 138, 0.1); border-color: #E8A08A; color: #E8A08A; font-weight: bold; }
+
+.drawer-photo-box {
+  width: 120px; height: 120px; background: #FFF; border: 1px dashed #EFECE7; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; margin-top: 8px; overflow: hidden;
+}
+.drawer-photo-preview { width: 100%; height: 100%; }
+.drawer-photo-placeholder { font-size: 12px; color: #999; text-align: center; }
+
+/* index.wxss 中追加 */
+.disabled-step {
+  opacity: 0.55 !important;
+  border: 1px dashed rgba(217, 136, 128, 0.4) !important;
+  background: rgba(232, 160, 138, 0.04) !important;
+}
+.disabled-step .custom-checkbox {
+  background: #EFEFEF !important;
+  border-color: #DDD !important;
+}
