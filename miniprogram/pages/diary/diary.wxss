@@ -539,3 +539,26 @@
 .animate-zoom-in {
   animation: zoomIn 0.3s ease forwards;
 }
+
+/* 📊 肤态趋势变化与诱因看板样式 */
+.trend-dashboard-card {
+  background: #FFF; border-radius: 16px; padding: 16px; margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(198,164,154,0.06); transition: all 0.3s ease;
+}
+.trend-dashboard-card.expanded { border: 1px solid rgba(198,164,154,0.25); }
+.dashboard-header { display: flex; justify-content: space-between; align-items: center; }
+.title-wrap { display: flex; align-items: center; }
+.title-icon { font-size: 18px; margin-right: 8px; }
+.dashboard-title { font-size: 14px; font-weight: bold; color: #555; }
+.arrow-icon { font-size: 11px; color: #999; }
+
+.tab-header { display: flex; justify-content: space-around; margin: 15px 0 10px; border-bottom: 1px solid #EFECE7; padding-bottom: 8px; }
+.tab-item { font-size: 13px; color: #777; padding: 4px 10px; transition: all 0.2s; position: relative; }
+.tab-item.active { color: #E8A08A; font-weight: bold; }
+.tab-item.active::after {
+  content: ''; position: absolute; bottom: -9px; left: 15%; right: 15%;
+  height: 2.5px; background: #E8A08A; border-radius: 2px;
+}
+
+.chart-canvas-container { width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; }
+.trend-canvas { width: 100%; height: 100%; }

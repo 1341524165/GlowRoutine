@@ -4,6 +4,29 @@
     <text class="subtitle">记录每一天的微小蜕变，见证肌肤屏障的新生</text>
   </view>
   
+  <!-- 📊 肤态趋势变化与诱因看板 -->
+  <view class="trend-dashboard-card glass-card {{isDashboardExpanded ? 'expanded' : ''}} animate-slide-up">
+    <view class="dashboard-header" bindtap="toggleDashboard">
+      <view class="title-wrap">
+        <text class="title-icon">📊</text>
+        <text class="dashboard-title">肤态趋势分析与生活诱因大盘</text>
+      </view>
+      <text class="arrow-icon">{{isDashboardExpanded ? '▲' : '▼'}}</text>
+    </view>
+    
+    <block wx:if="{{isDashboardExpanded}}">
+      <view class="tab-header">
+        <view class="tab-item {{activeChartTab === 'oil' ? 'active' : ''}}" data-tab="oil" bindtap="switchChartTab">油脂趋势</view>
+        <view class="tab-item {{activeChartTab === 'alert' ? 'active' : ''}}" data-tab="alert" bindtap="switchChartTab">警报频次</view>
+        <view class="tab-item {{activeChartTab === 'trigger' ? 'active' : ''}}" data-tab="trigger" bindtap="switchChartTab">诱因占比</view>
+      </view>
+      
+      <view class="chart-canvas-container">
+        <canvas type="2d" id="trendCanvas" class="trend-canvas"></canvas>
+      </view>
+    </block>
+  </view>
+  
   <!-- 极简打卡卡片 -->
   <view class="checkin-card glass-card animate-slide-up">
     <view class="card-header">

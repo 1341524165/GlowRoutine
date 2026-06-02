@@ -24,7 +24,9 @@ Page({
     reportTime: '',
     showAdModal: false,
     adCountdown: 15,
-    sliderX: 150
+    sliderX: 150,
+    isDashboardExpanded: false,
+    activeChartTab: 'oil'
   },
 
   onShow() {
@@ -41,6 +43,10 @@ Page({
         weeklyReport: cachedReport,
         reportTime: cachedReportTime
       });
+    }
+
+    if (this.data.isDashboardExpanded) {
+      setTimeout(() => this.drawTrendChart(), 100);
     }
   },
 
@@ -89,7 +95,9 @@ Page({
       beforeUrl = photoRecords[photoRecords.length - 1].local_photo_path || photoRecords[photoRecords.length - 1].photo_path || photoRecords[photoRecords.length - 1].cloud_file_id;
       afterUrl = photoRecords[0].local_photo_path || photoRecords[0].photo_path || photoRecords[0].cloud_file_id;
     } else if (photoRecords.length === 1) {
-      afterUrl = photoRecords[0].local_photo_path || photoRecords[0].photo_path || photoRecords[0].cloud_file_id;
+      const singlePhoto = photoRecords[0].local_photo_path || photoRecords[0].photo_path || photoRecords[0].cloud_file_id;
+      beforeUrl = singlePhoto;
+      afterUrl = singlePhoto;
     }
 
     this.setData({ checkInCount: localCount });
@@ -251,8 +259,7 @@ Page({
     };
     const result = await cloudEnhancements.addDocumentSafe('skin_diary', cloudPayload);
     if (result.ok && result.data && result.data._id) {
-      localData.updateSkinDiary(localDiary._id, {
-        cloud_id: result.data._id,
+      localData.updateSkinDiaryId(localDiary._id, result.data._id, {
         sync_status: 'synced',
         synced_at: new Date().toISOString()
       });
@@ -289,11 +296,14 @@ Page({
         this.canvasWidth = res[0].width;
         this.canvasHeight = res[0].height;
 
-        // 初始化默认图片
-        this.updateCompareImages(
-          'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600',
-          'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600'
-        );
+        // 初始化图片：如果 onShow 先触发且计算出了真实图片 URL，则使用它们；否则使用默认图
+        const beforeUrl = this.pendingBeforeUrl || 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=600';
+        const afterUrl = this.pendingAfterUrl || 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600';
+        
+        this.pendingBeforeUrl = null;
+        this.pendingAfterUrl = null;
+
+        this.updateCompareImages(beforeUrl, afterUrl);
       });
   },
 
@@ -334,7 +344,11 @@ Page({
    * 动态更新 Canvas 中加载的 Before / After 图片
    */
   async updateCompareImages(beforeUrl, afterUrl) {
-    if (!this.canvas) return;
+    if (!this.canvas) {
+      this.pendingBeforeUrl = beforeUrl;
+      this.pendingAfterUrl = afterUrl;
+      return;
+    }
 
     try {
       // 1. 安全转换图片路径
@@ -527,5 +541,403 @@ Page({
     if (this.adInterval) {
       clearInterval(this.adInterval);
     }
+  },
+
+  toggleDashboard() {
+    const nextState = !this.data.isDashboardExpanded;
+    this.setData({ isDashboardExpanded: nextState }, () => {
+      if (nextState) {
+        setTimeout(() => {
+          this.drawTrendChart();
+        }, 150);
+      }
+    });
+  },
+
+  switchChartTab(e) {
+    const tab = e.currentTarget.dataset.tab;
+    if (tab === this.data.activeChartTab) return;
+    this.setData({ activeChartTab: tab }, () => {
+      this.drawTrendChart();
+    });
+  },
+
+  drawTrendChart() {
+    const query = wx.createSelectorQuery();
+    query.select('#trendCanvas')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        if (!res[0] || !res[0].node) {
+          console.warn('Trend Canvas node not ready yet');
+          return;
+        }
+        const canvas = res[0].node;
+        const ctx = canvas.getContext('2d');
+        const dpr = wx.getSystemInfoSync().pixelRatio;
+        
+        const width = res[0].width;
+        const height = res[0].height;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+        
+        const stats = localData.getWeeklyTrendStats();
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        if (this.data.activeChartTab === 'oil') {
+          // 1. 油脂趋势 (oil)
+          const data = stats.oilinessList;
+          const dates = stats.datesList;
+          if (data.length === 0) {
+            ctx.fillStyle = '#777777';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('打卡数据不足，先去记本日记吧', width / 2, height / 2);
+            return;
+          }
+          
+          const paddingLeft = 40;
+          const paddingRight = 20;
+          const paddingTop = 30;
+          const paddingBottom = 30;
+          const chartWidth = width - paddingLeft - paddingRight;
+          const chartHeight = height - paddingTop - paddingBottom;
+          
+          // Map points
+          const points = [];
+          for (let i = 0; i < data.length; i++) {
+            const val = data[i];
+            const x = data.length > 1 ? paddingLeft + (i / (data.length - 1)) * chartWidth : paddingLeft + chartWidth / 2;
+            const y = paddingTop + chartHeight - ((val - 1) / 4) * chartHeight;
+            points.push({ x, y });
+          }
+          
+          // Draw grid and Y axis labels
+          ctx.fillStyle = '#999999';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          const yTicks = [
+            { val: 1, label: '干爽' },
+            { val: 3, label: '中性' },
+            { val: 5, label: '油腻' }
+          ];
+          yTicks.forEach(tick => {
+            const y = paddingTop + chartHeight - ((tick.val - 1) / 4) * chartHeight;
+            ctx.fillText(tick.label, paddingLeft - 8, y);
+            
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(paddingLeft, y);
+            ctx.lineTo(paddingLeft + chartWidth, y);
+            ctx.strokeStyle = '#EFECE7';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+          });
+          
+          if (points.length > 1) {
+            // Draw gradient fill
+            const grad = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + chartHeight);
+            grad.addColorStop(0, 'rgba(232, 160, 138, 0.35)');
+            grad.addColorStop(1, 'rgba(232, 160, 138, 0.0)');
+            
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 0; i < points.length - 1; i++) {
+              const p0 = points[i];
+              const p1 = points[i + 1];
+              ctx.bezierCurveTo(
+                p0.x + (p1.x - p0.x) / 3, p0.y,
+                p1.x - (p1.x - p0.x) / 3, p1.y,
+                p1.x, p1.y
+              );
+            }
+            ctx.lineTo(points[points.length - 1].x, paddingTop + chartHeight);
+            ctx.lineTo(points[0].x, paddingTop + chartHeight);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+            
+            // Draw curve stroke
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 0; i < points.length - 1; i++) {
+              const p0 = points[i];
+              const p1 = points[i + 1];
+              ctx.bezierCurveTo(
+                p0.x + (p1.x - p0.x) / 3, p0.y,
+                p1.x - (p1.x - p0.x) / 3, p1.y,
+                p1.x, p1.y
+              );
+            }
+            ctx.strokeStyle = '#E8A08A';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+          } else {
+            // If only 1 data point, draw flat line
+            ctx.beginPath();
+            ctx.moveTo(paddingLeft, points[0].y);
+            ctx.lineTo(paddingLeft + chartWidth, points[0].y);
+            ctx.strokeStyle = '#E8A08A';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
+          
+          // Draw points
+          points.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+            ctx.strokeStyle = '#E8A08A';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+          });
+          
+          // Draw X labels
+          ctx.fillStyle = '#777777';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          points.forEach((p, i) => {
+            ctx.fillText(dates[i], p.x, paddingTop + chartHeight + 6);
+          });
+          
+        } else if (this.data.activeChartTab === 'alert') {
+          // 2. 警报频次 (alert)
+          const barData = [
+            { name: '红血丝', count: stats.alertCounts.redness, color: '#D98880' },
+            { name: '爆痘', count: stats.alertCounts.acne, color: '#E9BC84' },
+            { name: '脱皮', count: stats.alertCounts.peeling, color: '#88A9C3' }
+          ];
+          
+          const paddingLeft = 45;
+          const paddingRight = 25;
+          const paddingTop = 30;
+          const paddingBottom = 30;
+          const chartWidth = width - paddingLeft - paddingRight;
+          const chartHeight = height - paddingTop - paddingBottom;
+          
+          const maxVal = Math.max(3, ...barData.map(b => b.count));
+          
+          // Draw grid and Y axis
+          ctx.fillStyle = '#999999';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          
+          const ticks = [0, Math.round(maxVal / 2), maxVal];
+          const uniqueTicks = [...new Set(ticks)];
+          uniqueTicks.forEach(tick => {
+            const y = paddingTop + chartHeight - (tick / maxVal) * chartHeight;
+            ctx.fillText(tick + '次', paddingLeft - 8, y);
+            
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(paddingLeft, y);
+            ctx.lineTo(paddingLeft + chartWidth, y);
+            ctx.strokeStyle = '#EFECE7';
+            ctx.stroke();
+            ctx.setLineDash([]);
+          });
+          
+          // Draw Bars
+          const colWidth = chartWidth / 3;
+          const barWidth = Math.min(32, colWidth * 0.5);
+          
+          barData.forEach((item, i) => {
+            const x = paddingLeft + i * colWidth + (colWidth - barWidth) / 2;
+            const barH = (item.count / maxVal) * chartHeight;
+            const y = paddingTop + chartHeight - barH;
+            
+            if (barH > 0) {
+              const r = Math.min(6, barWidth / 2, barH);
+              
+              // Vertical gradient
+              const grad = ctx.createLinearGradient(x, y, x, y + barH);
+              grad.addColorStop(0, item.color);
+              grad.addColorStop(1, item.color + '88');
+              
+              ctx.beginPath();
+              ctx.moveTo(x, y + barH);
+              ctx.lineTo(x, y + r);
+              ctx.arcTo(x, y, x + r, y, r);
+              ctx.arcTo(x + barWidth, y, x + barWidth, y + r, r);
+              ctx.lineTo(x + barWidth, y + barH);
+              ctx.closePath();
+              
+              ctx.fillStyle = grad;
+              ctx.fill();
+            }
+            
+            // Count text above bar
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(item.count + '次', x + barWidth / 2, y - 4);
+            
+            // Label text below bar
+            ctx.fillStyle = '#777777';
+            ctx.font = '10px sans-serif';
+            ctx.textBaseline = 'top';
+            ctx.fillText(item.name, x + barWidth / 2, paddingTop + chartHeight + 6);
+          });
+          
+        } else {
+          // 3. 诱因占比 (trigger)
+          const allTriggers = [
+            { key: 'stay_up', name: '熬夜', count: stats.triggerCounts.stay_up, color: '#E8A08A' },
+            { key: 'spicy', name: '辣食/火锅', count: stats.triggerCounts.spicy, color: '#D98880' },
+            { key: 'sugar', name: '甜食/奶茶', count: stats.triggerCounts.sugar, color: '#E9BC84' }
+          ];
+          
+          const centerX = width * 0.32;
+          const centerY = height * 0.38;
+          const outerR = 42;
+          const innerR = 26;
+          
+          // Bottom Quote box setup
+          const boxX = 15;
+          const boxY = height - 52;
+          const boxW = width - 30;
+          const boxH = 40;
+          
+          let tipText = '';
+          if (stats.totalTriggers === 0) {
+            // Draw placeholder donut in soft grey
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerR, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, innerR, Math.PI * 2, 0, true);
+            ctx.closePath();
+            ctx.fillStyle = '#EFECE7';
+            ctx.fill();
+            
+            ctx.fillStyle = '#777777';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('暂无', centerX, centerY - 6);
+            ctx.fillStyle = '#999999';
+            ctx.font = '9px sans-serif';
+            ctx.fillText('诱因', centerX, centerY + 8);
+            
+            tipText = '宝子本周记录超级养生！零熬夜零甜辣，皮肤屏障在默默给你点赞，继续保持哦！✨';
+          } else {
+            const activeTriggers = allTriggers.filter(t => t.count > 0);
+            let startAngle = -Math.PI / 2;
+            
+            activeTriggers.forEach(item => {
+              const sliceAngle = (item.count / stats.totalTriggers) * Math.PI * 2;
+              const endAngle = startAngle + sliceAngle;
+              
+              ctx.beginPath();
+              ctx.arc(centerX, centerY, outerR, startAngle, endAngle);
+              ctx.arc(centerX, centerY, innerR, endAngle, startAngle, true);
+              ctx.closePath();
+              ctx.fillStyle = item.color;
+              ctx.fill();
+              
+              startAngle = endAngle;
+            });
+            
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('诱因', centerX, centerY - 6);
+            ctx.fillStyle = '#777777';
+            ctx.font = '9px sans-serif';
+            ctx.fillText('占比', centerX, centerY + 8);
+            
+            // Find highest count trigger
+            let maxTrigger = allTriggers[0];
+            allTriggers.forEach(item => {
+              if (item.count > maxTrigger.count) {
+                maxTrigger = item;
+              }
+            });
+            
+            const pct = Math.round((maxTrigger.count / stats.totalTriggers) * 100);
+            if (maxTrigger.key === 'stay_up') {
+              tipText = `宝子最近的皮肤警报有${pct}%都和熬夜修仙有关，今晚得乖乖早睡，拒绝熊猫眼噢！✨`;
+            } else if (maxTrigger.key === 'spicy') {
+              tipText = `小辣妹注意啦！本周${pct}%的皮肤警报来自火辣美食，火锅虽爽，可别让脸蛋红通通抗议呀！🌶️`;
+            } else {
+              tipText = `糖分超标警告！最近${pct}%的肤态波动和奶茶甜食有关，AI闺蜜劝你少喝半糖，多喝温水哦！🍼`;
+            }
+          }
+          
+          // Draw Legend on the right side
+          const legendX = width * 0.58;
+          const legendYStart = centerY - 20;
+          
+          allTriggers.forEach((item, idx) => {
+            const y = legendYStart + idx * 20;
+            
+            // color circle
+            ctx.beginPath();
+            ctx.arc(legendX, y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = item.color;
+            ctx.fill();
+            
+            // label name
+            ctx.fillStyle = '#555555';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(item.name, legendX + 10, y);
+            
+            // percentage
+            const pct = stats.totalTriggers > 0 ? Math.round((item.count / stats.totalTriggers) * 100) : 0;
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.fillText(pct + '%', legendX + 80, y);
+          });
+          
+          // Draw Quote Box at the bottom
+          ctx.beginPath();
+          ctx.moveTo(boxX + 8, boxY);
+          ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, 8);
+          ctx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, 8);
+          ctx.arcTo(boxX, boxY + boxH, boxX, boxY, 8);
+          ctx.arcTo(boxX, boxY, boxX + boxW, boxY, 8);
+          ctx.closePath();
+          ctx.fillStyle = '#FAF6F0';
+          ctx.fill();
+          
+          // Write Quote Text
+          ctx.fillStyle = '#8A6E64';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          
+          // Simple wrapper or draw text inside quote box
+          const words = tipText.split('');
+          let line = '';
+          let currentY = boxY + 14;
+          const lineH = 14;
+          const maxTextW = boxW - 20;
+          
+          for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n];
+            let metrics = ctx.measureText(testLine);
+            let testWidth = metrics.width;
+            if (testWidth > maxTextW && n > 0) {
+              ctx.fillText(line, boxX + 10, currentY);
+              line = words[n];
+              currentY += lineH;
+            } else {
+              line = testLine;
+            }
+          }
+          ctx.fillText(line, boxX + 10, currentY);
+        }
+      });
   }
 });
