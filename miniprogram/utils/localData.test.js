@@ -83,9 +83,61 @@ function testReportArchiveLimit() {
   assert(reports[0].id === 'r3' && reports[1].id === 'r2', 'newest reports should be retained');
 }
 
+function testUpdateSkinDiaryId() {
+  resetStore();
+  const diary = localData.addSkinDiary({
+    date: '2026-06-01',
+    ratings: { oiliness: 4, redness: 1, acne: 1, peeling: 1 },
+    statuses: [],
+    triggers: ['stay_up']
+  });
+  
+  assert(localData.getSkinDiaries().length === 1, 'diary should be stored');
+  assert(localData.getSkinDiaries()[0]._id === diary._id, 'diary should have local ID');
+
+  const cloudId = 'cloud_diary_123456';
+  localData.updateSkinDiaryId(diary._id, cloudId, {
+    sync_status: 'synced',
+    synced_at: '2026-06-01T02:00:00.000Z'
+  });
+
+  const updatedDiaries = localData.getSkinDiaries();
+  assert(updatedDiaries.length === 1, 'diary should NOT be duplicated');
+  assert(updatedDiaries[0]._id === cloudId, 'diary should have updated cloud ID');
+  assert(updatedDiaries[0].sync_status === 'synced', 'diary sync status should be synced');
+}
+
 testSkinProfileUsesExistingKeys();
 testCabinetUpsertAndDelete();
 testDiaryLocalFirstShape();
 testLatestWriteWinsMerge();
 testReportArchiveLimit();
+testUpdateSkinDiaryId();
+
+function testGetWeeklyTrendStats() {
+  resetStore();
+  // 注入 Mock 3次打卡数据
+  localData.addSkinDiary({
+    date: '2026-06-01',
+    ratings: { oiliness: 4, redness: 5, acne: 1, peeling: 1 },
+    statuses: ['red', 'redness'],
+    triggers: ['stay_up', 'spicy']
+  });
+  localData.addSkinDiary({
+    date: '2026-06-02',
+    ratings: { oiliness: 2, redness: 1, acne: 5, peeling: 1 },
+    statuses: ['acne'],
+    triggers: ['stay_up', 'sugar']
+  });
+  
+  const stats = localData.getWeeklyTrendStats();
+  assert(stats.oilinessList.length === 2, 'should have 2 records');
+  assert(stats.oilinessList[1] === 2, 'newest should be last when reversed (chronological order)');
+  assert(stats.oilinessList[0] === 4, 'oldest should be first when reversed (chronological order)');
+  assert(stats.alertCounts.redness === 1, 'redness count should be 1');
+  assert(stats.alertCounts.acne === 1, 'acne count should be 1');
+  assert(stats.triggerCounts['stay_up'] === 2, 'stay_up count should be 2');
+}
+
+testGetWeeklyTrendStats();
 console.log('localData tests passed');

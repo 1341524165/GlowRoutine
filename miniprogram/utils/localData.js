@@ -140,6 +140,15 @@ function updateSkinDiary(id, patch) {
   return diaries.find(item => item._id === id);
 }
 
+function updateSkinDiaryId(oldId, newId, patch) {
+  const diaries = getSkinDiaries().map(item => {
+    if (item._id !== oldId) return item;
+    return { ...item, ...patch, _id: newId, updated_at: nowIso() };
+  });
+  saveSkinDiaries(diaries);
+  return diaries.find(item => item._id === newId);
+}
+
 function mergeSkinDiaries(incoming) {
   const byId = {};
   getSkinDiaries().forEach(item => {
@@ -201,6 +210,39 @@ function saveUsageState(usage) {
   return setStorage(STORAGE_KEYS.usage, usage);
 }
 
+function getWeeklyTrendStats() {
+  const diaries = getSkinDiaries().slice(0, 7).reverse();
+  const oilinessList = diaries.map(d => d.ratings?.oiliness || 3);
+  const datesList = diaries.map(d => d.date?.substring(5) || '');
+  
+  const alertCounts = { redness: 0, acne: 0, peeling: 0 };
+  const triggerCounts = { stay_up: 0, spicy: 0, sugar: 0 };
+  let totalTriggers = 0;
+
+  diaries.forEach(d => {
+    const ratings = d.ratings || {};
+    if (ratings.redness >= 3) alertCounts.redness++;
+    if (ratings.acne >= 3) alertCounts.acne++;
+    if (ratings.peeling >= 3) alertCounts.peeling++;
+
+    const triggers = d.triggers || [];
+    triggers.forEach(t => {
+      if (triggerCounts[t] !== undefined) {
+        triggerCounts[t]++;
+        totalTriggers++;
+      }
+    });
+  });
+
+  return {
+    oilinessList,
+    datesList,
+    alertCounts,
+    triggerCounts,
+    totalTriggers
+  };
+}
+
 module.exports = {
   STORAGE_KEYS,
   saveSkinProfile,
@@ -214,6 +256,7 @@ module.exports = {
   saveSkinDiaries,
   addSkinDiary,
   updateSkinDiary,
+  updateSkinDiaryId,
   mergeSkinDiaries,
   getRoutinePreferences,
   saveRoutinePreferences,
@@ -222,5 +265,6 @@ module.exports = {
   getEntitlementState,
   saveEntitlementState,
   getUsageState,
-  saveUsageState
+  saveUsageState,
+  getWeeklyTrendStats
 };
