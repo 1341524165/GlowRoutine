@@ -28,7 +28,10 @@
         </view>
         
         <view class="product-grid">
-          <view class="product-card glass-card" wx:for="{{shelf.products}}" wx:key="_id" bindlongpress="onDeleteProduct" data-id="{{item._id}}" data-name="{{item.product_name}}">
+          <view class="product-card glass-card {{isRedAlert && item.isRestricted ? 'red-alert-frozen-glass' : ''}}" wx:for="{{shelf.products}}" wx:key="_id" bindlongpress="onDeleteProduct" data-id="{{item._id}}" data-name="{{item.product_name}}">
+            <block wx:if="{{isRedAlert && item.isRestricted}}">
+              <view class="red-alert-badge">🚨 敏感期禁用</view>
+            </block>
             <view class="product-info">
               <text class="p-name">{{item.product_name}}</text>
               <view class="tag-row" wx:if="{{item.ingredients && item.ingredients.length > 0}}">
