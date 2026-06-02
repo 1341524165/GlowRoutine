@@ -154,55 +154,120 @@ Page({
       sourceType: ['album', 'camera'],
       success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
-        wx.showLoading({ title: 'AI 识别配方中...' });
 
         const entitlement = localData.getEntitlementState();
         const usage = localData.getUsageState();
         const quota = entitlementRules.canUseCloudFeature('ai_ocr', entitlement, usage, new Date());
 
         if (!quota.allowed) {
-          wx.hideLoading();
           wx.showModal({
-            title: '本月 AI 识别额度已用完',
-            content: quota.prompt.message,
-            confirmText: '手动填写',
-            showCancel: false
+            title: '额度已用完',
+            content: '本月免费额度已用完。宝子，可以通过观看 15 秒短片瞬间解锁 1 次额外额度，或者订阅会员免广告畅用 👑',
+            confirmText: '看广告解锁',
+            cancelText: '取消',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                this.showAdAndUnlockOcr(tempFilePath);
+              }
+            }
           });
           return;
         }
 
-        const cloudPath = `ocr/${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
-        cloudEnhancements.uploadFileSafe(cloudPath, tempFilePath).then(upload => {
-          if (!upload.ok) {
-            wx.hideLoading();
-            wx.showToast({ title: '图片上传失败，已采用本地模拟识别', icon: 'none' });
-            this.fillOCRData({
-              product_name: '理肤泉 B5 修复面霜',
-              category: 'cream',
-              pao_months: 6,
-              ingredients: ['积雪草', 'B5']
-            });
-            return;
-          }
-          return cloudEnhancements.callFunctionSafe('skincareCabinetOCR', { fileID: upload.data }).then(ocrRes => {
-            wx.hideLoading();
-            if (ocrRes.ok) {
-              localData.saveUsageState(entitlementRules.incrementUsage(usage, 'ai_ocr', new Date()));
-              this.fillOCRData(ocrRes.data);
-              wx.showToast({ title: 'AI 填表成功！', icon: 'success' });
-            } else {
-              wx.showToast({ title: '识别失败，已采用默认回填', icon: 'none' });
-              this.fillOCRData({
-                product_name: '已上传待核对品名',
-                category: 'essence',
-                pao_months: 12,
-                ingredients: ['玻尿酸']
-              });
-            }
-          });
-        });
+        this.performOCRUploadAndProcess(tempFilePath);
       }
     });
+  },
+
+  performOCRUploadAndProcess(tempFilePath) {
+    wx.showLoading({ title: 'AI 识别配方中...' });
+    const cloudPath = `ocr/${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
+    cloudEnhancements.uploadFileSafe(cloudPath, tempFilePath).then(upload => {
+      if (!upload.ok) {
+        wx.hideLoading();
+        wx.showToast({ title: '图片上传失败，已采用本地模拟识别', icon: 'none' });
+        this.fillOCRData({
+          product_name: '理肤泉 B5 修复面霜',
+          category: 'cream',
+          pao_months: 6,
+          ingredients: ['积雪草', 'B5']
+        });
+        return;
+      }
+      return cloudEnhancements.callFunctionSafe('skincareCabinetOCR', { fileID: upload.data }).then(ocrRes => {
+        wx.hideLoading();
+        if (ocrRes.ok) {
+          const usage = localData.getUsageState();
+          localData.saveUsageState(entitlementRules.incrementUsage(usage, 'ai_ocr', new Date()));
+          this.fillOCRData(ocrRes.data);
+          wx.showToast({ title: 'AI 填表成功！', icon: 'success' });
+        } else {
+          wx.showToast({ title: '识别失败，已采用默认回填', icon: 'none' });
+          this.fillOCRData({
+            product_name: '已上传待核对品名',
+            category: 'essence',
+            pao_months: 12,
+            ingredients: ['玻尿酸']
+          });
+        }
+      });
+    });
+  },
+
+  showAdAndUnlockOcr(tempFilePath) {
+    if (this.videoAd) {
+      this.videoAd.show().catch(err => {
+        console.warn('Ad show failed, retrying load', err);
+        this.videoAd.load().then(() => this.videoAd.show());
+      });
+      return;
+    }
+
+    if (wx.createRewardedVideoAd) {
+      // 线上真机加载微信官方激励广告
+      const ad = wx.createRewardedVideoAd({ adUnitId: 'adunit-mock-id' });
+      ad.onLoad(() => console.log('RewardedVideoAd loaded'));
+      ad.onError((err) => {
+        console.warn('RewardedVideoAd load error, triggering simulated ad fallback', err);
+        this.runSimulatedAd(tempFilePath);
+      });
+      ad.onClose((res) => {
+        if (res && res.isEnded) {
+          wx.showToast({ title: '广告完成，额度已解锁！', icon: 'success' });
+          this.grantAdExemption(tempFilePath);
+        } else {
+          wx.showToast({ title: '中途关闭，未能解锁哦', icon: 'none' });
+        }
+      });
+      this.videoAd = ad;
+      ad.show().catch(err => {
+        console.warn('Initial show failed, triggering simulated ad fallback', err);
+        this.runSimulatedAd(tempFilePath);
+      });
+    } else {
+      this.runSimulatedAd(tempFilePath);
+    }
+  },
+
+  runSimulatedAd(tempFilePath) {
+    wx.showLoading({ title: '赞助商视频播放中 (3s)...' });
+    setTimeout(() => {
+      wx.hideLoading();
+      wx.showToast({ title: '广告完成，额度已解锁！', icon: 'success' });
+      this.grantAdExemption(tempFilePath);
+    }, 3000);
+  },
+
+  grantAdExemption(tempFilePath) {
+    // 豁免配额：将本地 monthlyCount 回退 1 次
+    const usage = localData.getUsageState();
+    const key = entitlementRules.monthKey(new Date());
+    if (usage[key] && usage[key]['ai_ocr'] > 0) {
+      usage[key]['ai_ocr']--;
+      localData.saveUsageState(usage);
+    }
+    // 再次触发 OCR 图片上传及后台提取流程
+    this.performOCRUploadAndProcess(tempFilePath);
   },
 
   fillOCRData(data) {

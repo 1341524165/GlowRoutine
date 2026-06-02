@@ -99,17 +99,19 @@ Page({
     const quota = entitlementRules.canUseCloudFeature('buying_consultation', entitlement, usage, new Date());
 
     if (!quota.allowed) {
-      const fallbackResult = reportFallback.buildBuyingFallback(targetName, localData.getSkinProfile(), localData.getCabinetProducts());
       this.setData({
-        isLoading: false,
-        analysisResult: fallbackResult,
-        productName: targetName
+        isLoading: false
       });
       wx.showModal({
-        title: '本月 AI 咨询额度已用完',
-        content: quota.prompt.message,
-        confirmText: '查看本地建议',
-        showCancel: false
+        title: '额度已用完',
+        content: '本月免费额度已用完。宝子，可以通过观看 15 秒短片瞬间解锁 1 次额外额度，或者订阅会员免广告畅用 👑',
+        confirmText: '看广告解锁',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            this.showAdAndUnlockQuota(targetName);
+          }
+        }
       });
       return;
     }
@@ -132,6 +134,62 @@ Page({
         wx.showToast({ title: '已生成本地建议', icon: 'none' });
       }
     });
+  },
+
+  showAdAndUnlockQuota(targetName) {
+    if (this.videoAd) {
+      this.videoAd.show().catch(err => {
+        console.warn('Ad show failed, retrying load', err);
+        this.videoAd.load().then(() => this.videoAd.show());
+      });
+      return;
+    }
+
+    if (wx.createRewardedVideoAd) {
+      // 线上真机加载微信官方激励广告
+      const ad = wx.createRewardedVideoAd({ adUnitId: 'adunit-mock-id' });
+      ad.onLoad(() => console.log('RewardedVideoAd loaded'));
+      ad.onError((err) => {
+        console.warn('RewardedVideoAd load error, triggering simulated ad fallback', err);
+        this.runSimulatedAd(targetName);
+      });
+      ad.onClose((res) => {
+        if (res && res.isEnded) {
+          wx.showToast({ title: '广告完成，额度已解锁！', icon: 'success' });
+          this.grantAdExemption(targetName);
+        } else {
+          wx.showToast({ title: '中途关闭，未能解锁哦', icon: 'none' });
+        }
+      });
+      this.videoAd = ad;
+      ad.show().catch(err => {
+        console.warn('Initial show failed, triggering simulated ad fallback', err);
+        this.runSimulatedAd(targetName);
+      });
+    } else {
+      this.runSimulatedAd(targetName);
+    }
+  },
+
+  runSimulatedAd(targetName) {
+    wx.showLoading({ title: '赞助商视频播放中 (3s)...' });
+    setTimeout(() => {
+      wx.hideLoading();
+      wx.showToast({ title: '广告完成，额度已解锁！', icon: 'success' });
+      this.grantAdExemption(targetName);
+    }, 3000);
+  },
+
+  grantAdExemption(targetName) {
+    // 豁免配额：将本地 monthlyCount 回退 1 次
+    const usage = localData.getUsageState();
+    const key = entitlementRules.monthKey(new Date());
+    if (usage[key] && usage[key]['buying_consultation'] > 0) {
+      usage[key]['buying_consultation']--;
+      localData.saveUsageState(usage);
+    }
+    // 再次重新触发冷静分析
+    this.startAnalysis();
   },
 
   // 利用小程序原生 Canvas 2D 绘制并保存 9:16 黄金比例海报
